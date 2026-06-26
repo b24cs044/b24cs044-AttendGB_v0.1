@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>BioAttend</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#020917" id="meta-theme-color"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="BioAttend"/>
+<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png"/>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  /* Dark theme (default) */
+  --bg:         #020917;
+  --bg2:        #060f24;
+  --surface:    #0b1530;
+  --surface2:   #0f1d42;
+  --input-bg:   #0d1938;
+  --border:     rgba(99,130,255,.16);
+  --border2:    rgba(99,130,255,.28);
+  --text:       #eef2ff;
+  --text2:      #c7d2fe;
+  --muted:      #64748b;
+  --acc:        #4f6ef7;
+  --acc-light:  #6d89ff;
+  --acc2:       #7c3aed;
+  --danger:     #f43f5e;
+  --danger-bg:  rgba(244,63,94,.10);
+  --success:    #22d3a0;
+  --success-bg: rgba(34,211,160,.10);
+  --warn:       #f59e0b;
+  --warn-bg:    rgba(245,158,11,.10);
+  --shadow:     0 32px 80px rgba(0,0,0,.70);
+  --shadow-sm:  0 8px 24px rgba(0,0,0,.40);
+  --rad:        16px;
+  --rad-sm:     10px;
+  --header-h:   56px;
+}
+
+[data-theme="light"] {
+  --bg:         #f0f4ff;
+  --bg2:        #e6ecff;
+  --surface:    #ffffff;
+  --surface2:   #f5f7ff;
+  --input-bg:   #f0f4ff;
+  --border:     rgba(99,130,255,.18);
+  --border2:    rgba(99,130,255,.35);
+  --text:       #0f172a;
+  --text2:      #334155;
+  --muted:      #94a3b8;
+  --shadow:     0 8px 40px rgba(79,110,247,.12);
+  --shadow-sm:  0 2px 12px rgba(79,110,247,.08);
+}
+
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  overflow-x: hidden;
+  transition: background .3s, color .3s;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="dark"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 10% -5%, rgba(79,110,247,.22) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 105%, rgba(124,58,237,.18) 0%, transparent 50%);
+}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT SHELL
+═══════════════════════════════════════════════ */
+.app-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 env(safe-area-inset-bottom, 16px);
+}
+
+/* ═══════════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════════ */
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: background .3s;
+}
+
+.top-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-mark {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--acc), var(--acc2));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(79,110,247,.4);
+}
+
+.logo-mark svg { width: 18px; height: 18px; fill: #fff; }
+
+.brand-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.3px;
+}
+
+.brand-org {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+
+.icon-btn:hover { color: var(--acc); border-color: var(--border2); }
+.icon-btn svg { width: 16px; height: 16px; }
+
+/* ═══════════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════════ */
+.screen {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  padding: 20px 16px 32px;
+  animation: fadeUp .3s ease both;
+}
+
+.screen.active { display: flex; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════
+   AUTH SCREENS (Login + Register)
+═══════════════════════════════════════════════ */
+.auth-hero {
+  text-align: center;
+  padding: 28px 0 24px;
+}
+
+.auth-hero-icon {
+  width: 72px; height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--acc), var(--acc2));
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  box-shadow: 0 0 40px rgba(79,110,247,.35);
+  animation: breathe 4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,100% { box-shadow: 0 0 30px rgba(79,110,247,.30); }
+  50%      { box-shadow: 0 0 50px rgba(79,110,247,.55); }
+}
+
+.auth-hero-icon svg { width: 36px; height: 36px; fill: #fff; }
+
+.auth-hero h1 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.auth-hero p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ── Auth tabs ─────────────────────── */
+.auth-tabs {
+  display: flex;
+  background: var(--surface2);
+  border-radius: var(--rad);
+  padding: 3px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  border-radius: 13px;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.auth-tab.active {
+  background: var(--surface);
+  color: var(--acc);
+  box-shadow: var(--shadow-sm);
+}
+
+.auth-pane { display: none; }
+.auth-pane.active { display: block; animation: fadeUp .25s ease both; }
+
+/* ═══════════════════════════════════════════════
+   FORM COMPONENTS
+═══════════════════════════════════════════════ */
+.field {
+  margin-bottom: 14px;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.field-label .req { color: var(--acc); }
+
+.field-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--input-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rad-sm);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  -webkit-appearance: none;
+}
+
+.field-input::placeholder { color: var(--muted); font-size: 13px; font-weight: 400; }
+.field-input:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px rgba(79,110,247,.15);
+}
+.field-input.err {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(244,63,94,.12);
+}
+.field-input:disabled, .field-input[readonly] { opacity: .6; cursor: not-allowed; }
+.field-input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.45); cursor: pointer; }
+.field-input option { background: var(--surface); }
+
+.pw-wrap { position: relative; }
+.pw-wrap .field-input { padding-right: 44px; }
+.pw-eye {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  display: flex; align-items: center; padding: 4px;
+  transition: color .2s;
+}
+.pw-eye:hover { color: var(--acc); }
+.pw-eye svg { width: 16px; height: 16px; }
+
+.field-error {
+  min-height: 16px;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 340px) { .row2 { grid-template-columns: 1fr; } }
+
+/* Password strength meter */
+.pw-strength {
+  margin-top: 6px;
+  display: flex;
+  gap: 4px;
+}
+
+.pw-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--border2);
+  transition: background .3s;
+}
+
+.pw-bar.weak   { background: var(--danger); }
+.pw-bar.fair   { background: var(--warn); }
+.pw-bar.strong { background: var(--success); }
+
+.pw-label {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+/* Step progress bar */
+.step-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.step-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  color: var(--muted);
+  transition: all .3s;
+  flex-shrink: 0;
+}
+
+.step-dot.active { border-color: var(--acc); color: var(--acc); background: rgba(79,110,247,.12); }
+.step-dot.done   { border-color: var(--success); background: var(--success); color: #fff; }
+
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border2);
+  transition: background .3s;
+}
+
+.step-line.done { background: var(--success); }
+
+.step-label {
+  font-size: 10px; color: var(--muted); text-align: center;
+  margin-top: 6px; margin-bottom: 2px; letter-spacing: .4px;
+}
+
+/* Register steps */
+.reg-step { display: none; }
+.reg-step.active { display: block; animation: fadeUp .25s ease both; }
+
+/* ═══════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════ */
+.btn {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: var(--rad-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+  transition: all .2s;
+  letter-spacing: .1px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active { transform: scale(.98); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--acc), var(--acc2));
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(79,110,247,.35);
+}
+
+.btn-primary:hover { opacity: .9; box-shadow: 0 6px 28px rgba(79,110,247,.45); }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text2);
+}
+
+.btn-secondary:hover { border-color: var(--acc); color: var(--acc); }
+.btn-secondary:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-danger {
+  background: var(--danger-bg);
+  border: 1.5px solid rgba(244,63,94,.28);
+  color: var(--danger);
+}
+
+.btn-danger:hover { background: rgba(244,63,94,.18); }
+
+.btn-success {
+  background: var(--success-bg);
+  border: 1.5px solid rgba(34,211,160,.28);
+  color: var(--success);
+}
+
+.btn-bio {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-bio::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(79,110,247,.08), rgba(124,58,237,.08));
+  opacity: 0;
+  transition: opacity .2s;
+}
+
+.btn-bio:hover { border-color: var(--acc); color: var(--acc); }
+.btn-bio:hover::before { opacity: 1; }
+.btn-bio:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn svg { flex-shrink: 0; }
+
+.divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 14px 0;
+  font-size: 11px; color: var(--muted);
+}
+
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+.spin {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════
+   GPS STATUS BAR
+═══════════════════════════════════════════════ */
+.gps-bar {
+  border-radius: var(--rad-sm);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+  transition: all .3s;
+}
+
+.gps-bar.show { display: flex; }
+.gps-bar.getting { background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.25); color: var(--warn); }
+.gps-bar.ok      { background: var(--success-bg); border: 1px solid rgba(34,211,160,.25); color: var(--success); }
+.gps-bar.fail    { background: var(--danger-bg); border: 1px solid rgba(244,63,94,.25); color: var(--danger); }
+
+.gps-bar svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════
+   OFFLINE BANNER
+═══════════════════════════════════════════════ */
+.offline-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 999;
+  background: var(--warn);
+  color: #000;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  text-align: center;
+  transform: translateY(-100%);
+  transition: transform .3s;
+}
+
+.offline-bar.show { transform: translateY(0); }
+
+/* ═══════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 100px;
+  padding: 11px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s;
+  opacity: 0;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: calc(100vw - 32px);
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.success { background: var(--success); color: #fff; border-color: transparent; }
+.toast.error   { background: var(--danger);  color: #fff; border-color: transparent; }
+.toast.warn    { background: var(--warn);    color: #000; border-color: transparent; }
+
+/* ═══════════════════════════════════════════════
+   DASHBOARD SCREEN
+═══════════════════════════════════════════════ */
+.dash-greeting {
+  margin-bottom: 20px;
+}
+
+.dash-greeting .welcome-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+
+.dash-greeting h2 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.4px;
+  margin-top: 2px;
+  color: var(--text);
+}
+
+.dash-date {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── Status card ───────────────────────── */
+.status-card {
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  transition: all .3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  transition: background .3s;
+}
+
+.status-card.state-none::before    { background: var(--border2); }
+.status-card.state-in::before      { background: linear-gradient(90deg, var(--acc), var(--acc2)); }
+.status-card.state-done::before    { background: linear-gradient(90deg, var(--success), #06b6d4); }
+.status-card.state-offline::before { background: linear-gradient(90deg, var(--warn), #f97316); }
+
+.status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.status-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 100px;
+  letter-spacing: .3px;
+}
+
+.status-badge.none    { background: var(--surface2); color: var(--muted); }
+.status-badge.in      { background: rgba(79,110,247,.15); color: var(--acc-light); }
+.status-badge.done    { background: var(--success-bg); color: var(--success); }
+.status-badge.queued  { background: var(--warn-bg); color: var(--warn); }
+
+.status-time-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.time-block { }
+
+.time-block-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 4px;
+}
+
+.time-block-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.5px;
+  line-height: 1;
+}
+
+.time-block-value.empty { color: var(--muted); font-size: 14px; font-weight: 500; }
+
+.status-location {
+  font-size: 11.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.status-location svg { width: 12px; height: 12px; flex-shrink: 0; margin-top: 2px; }
+
+.distance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-top: 6px;
+  background: var(--surface2);
+  color: var(--muted);
+}
+
+/* ── Action button area ─────────────────── */
+.action-area {
+  margin-bottom: 16px;
+}
+
+.btn-checkin {
+  padding: 16px;
+  font-size: 16px;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-checkin-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 100%, rgba(255,255,255,.15), transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Attendance % ring ──────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 10px;
+  text-align: center;
+  transition: border-color .2s;
+}
+
+.stat-card:hover { border-color: var(--border2); }
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 9px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+/* Ring */
+.ring-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.ring-svg-wrap {
+  position: relative;
+  width: 72px; height: 72px;
+  flex-shrink: 0;
+}
+
+.ring-svg { transform: rotate(-90deg); }
+
+.ring-track { fill: none; stroke: var(--surface2); stroke-width: 8; }
+.ring-fill  { fill: none; stroke-width: 8; stroke-linecap: round;
+              stroke: url(#ring-grad); transition: stroke-dashoffset .6s ease; }
+
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800; color: var(--text);
+}
+
+.ring-info { flex: 1; }
+.ring-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.ring-sub   { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* ── Session banner ─────────────────────── */
+.session-banner {
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: rgba(79,110,247,.12);
+  border: 1px solid rgba(79,110,247,.28);
+  margin-bottom: 14px;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.session-banner.show { display: flex; }
+.session-banner:hover { background: rgba(79,110,247,.18); }
+.session-banner-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--acc);
+  box-shadow: 0 0 6px var(--acc);
+  flex-shrink: 0;
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.session-banner-text { flex: 1; }
+.session-banner-title { font-size: 12px; font-weight: 700; color: var(--acc-light); }
+.session-banner-sub   { font-size: 11px; color: var(--muted); }
+.session-banner-arrow { color: var(--muted); }
+.session-banner-arrow svg { width: 14px; height: 14px; }
+
+/* ── History list ───────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+}
+
+.section-link {
+  font-size: 11px;
+  color: var(--acc);
+  cursor: pointer;
+  font-weight: 600;
+  background: none;
+  border: none;
+  transition: opacity .2s;
+}
+.section-link:hover { opacity: .75; }
+
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+
+.hist-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color .2s;
+}
+
+.hist-item:hover { border-color: var(--border2); }
+
+.hist-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.hist-dot.present { background: var(--success); box-shadow: 0 0 6px rgba(34,211,160,.5); }
+.hist-dot.absent  { background: var(--danger);  box-shadow: 0 0 6px rgba(244,63,94,.4); }
+.hist-dot.partial { background: var(--warn);    box-shadow: 0 0 6px rgba(245,158,11,.4); }
+.hist-dot.queued  { background: var(--muted); }
+
+.hist-info { flex: 1; }
+
+.hist-date {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.hist-detail {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.hist-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+.hist-badge.present { background: var(--success-bg); color: var(--success); }
+.hist-badge.absent  { background: var(--danger-bg);  color: var(--danger); }
+.hist-badge.partial { background: var(--warn-bg);    color: var(--warn); }
+.hist-badge.queued  { background: var(--surface2);   color: var(--muted); }
+
+.empty-state {
+  text-align: center;
+  padding: 32px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.empty-state-icon { font-size: 36px; margin-bottom: 10px; }
+
+/* ── Offline queue indicator ────────────── */
+.queue-banner {
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--warn-bg);
+  border: 1px solid rgba(245,158,11,.25);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--warn);
+  font-weight: 600;
+  margin-bottom: 14px;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.queue-banner.show { display: flex; }
+.queue-banner:hover { background: rgba(245,158,11,.18); }
+.queue-banner svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* ── Work location request ──────────────── */
+.wlr-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.wlr-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.wlr-card-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════════════════ */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 440px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: none;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.bottom-nav.show { display: flex; }
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  transition: color .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item.active { color: var(--acc); }
+
+.nav-item svg { width: 20px; height: 20px; transition: transform .2s; }
+.nav-item.active svg { transform: translateY(-1px); }
+
+/* spacing for content above fixed bottom nav */
+.screen.has-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+
+/* ═══════════════════════════════════════════════
+   INSTALL PROMPT
+═══════════════════════════════════════════════ */
+.install-prompt {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  left: 50%; transform: translateX(-50%) translateY(20px);
+  width: calc(100% - 32px);
+  max-width: 408px;
+  background: var(--surface);
+  border: 1.5px solid var(--border2);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow);
+  z-index: 91;
+  opacity: 0;
+  transition: opacity .3s, transform .3s;
+}
+
+.install-prompt.show {
+  display: flex;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.install-prompt-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--acc), var(--acc2));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.install-prompt-icon svg { width: 20px; height: 20px; fill: #fff; }
+.install-prompt-text { flex: 1; }
+.install-prompt-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.install-prompt-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.install-prompt-btns  { display: flex; gap: 8px; }
+
+.install-btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  transition: opacity .2s;
+  white-space: nowrap;
+}
+
+.install-btn.primary { background: linear-gradient(135deg, var(--acc), var(--acc2)); color: #fff; }
+.install-btn.dismiss { background: var(--surface2); color: var(--muted); }
+.install-btn:hover { opacity: .85; }
+
+/* ═══════════════════════════════════════════════
+   DARK/LIGHT THEME TOGGLE
+═══════════════════════════════════════════════ */
+.theme-icon-dark  { display: block; }
+.theme-icon-light { display: none; }
+
+[data-theme="light"] .theme-icon-dark  { display: none; }
+[data-theme="light"] .theme-icon-light { display: block; }
+
+/* ═══════════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════════ */
+.hidden { display: none !important; }
+.mt-8  { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+
+.card-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.info-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600;
+  padding: 4px 10px; border-radius: 100px;
+  background: rgba(79,110,247,.12);
+  color: var(--acc-light);
+  border: 1px solid rgba(79,110,247,.2);
+}
+
+.info-chip svg { width: 12px; height: 12px; }
+
+</style>
+</head>
+<body>
+
+<!-- Offline bar -->
+<div class="offline-bar" id="offline-bar">⚠ No internet — attendance will be queued and synced when you reconnect</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Install prompt -->
+<div class="install-prompt" id="install-prompt">
+  <div class="install-prompt-icon">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9l4-8 4 8h-2l-.8-2h-2.4L11 16zm1-4.27L12.73 13h-1.46L12 11.73z"/></svg>
+  </div>
+  <div class="install-prompt-text">
+    <div class="install-prompt-title">Add to Home Screen</div>
+    <div class="install-prompt-sub">Quick access, works offline</div>
+  </div>
+  <div class="install-prompt-btns">
+    <button class="install-btn primary" id="btn-install">Install</button>
+    <button class="install-btn dismiss" id="btn-install-dismiss">Later</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     APP SHELL
+════════════════════════════════════════════ -->
+<div class="app-shell">
+
+  <!-- Top Bar -->
+  <div class="top-bar" id="top-bar">
+    <div class="top-bar-brand">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm9 11v-1a7 7 0 0 0-14 0v1h2v-1a5 5 0 0 1 10 0v1z"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">BioAttend</div>
+        <div class="brand-org" id="brand-org">Loading…</div>
+      </div>
+    </div>
+    <div class="top-bar-actions">
+      <button class="icon-btn" id="btn-theme" title="Toggle theme" onclick="toggleTheme()">
+        <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+        <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <button class="icon-btn hidden" id="btn-logout" title="Sign out" onclick="handleLogout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN: AUTH
+  ════════════════════════════════════════ -->
+  <div class="screen active" id="screen-auth">
+
+    <div class="auth-hero">
+      <div class="auth-hero-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm9 11v-1a7 7 0 0 0-14 0v1h2v-1a5 5 0 0 1 10 0v1z"/></svg>
+      </div>
+      <h1 id="auth-title">BioAttend</h1>
+      <p id="auth-subtitle">Biometric attendance for students</p>
+    </div>
+
+    <!-- Auth tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="atab-login" onclick="switchAuth('login')">Sign In</button>
+      <button class="auth-tab"        id="atab-register" onclick="switchAuth('register')">Create Account</button>
+    </div>
+
+    <!-- ── LOGIN PANE ── -->
+    <div class="auth-pane active" id="apane-login">
+
+      <div class="field">
+        <div class="field-label">Email <span class="req">*</span></div>
+        <input class="field-input" id="li-email" type="email" inputmode="email" autocomplete="email"
+               placeholder="your@college.edu" autocapitalize="none" spellcheck="false"/>
+        <div class="field-error" id="li-email-err"></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Password <span class="req">*</span></div>
+        <div class="pw-wrap">
+          <input class="field-input" id="li-password" type="password" autocomplete="current-password"
+                 placeholder="Your password"/>
+          <button class="pw-eye" type="button" onclick="togglePw('li-password')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="field-error" id="li-pass-err"></div>
+      </div>
+      <button class="btn btn-primary mt-8" id="btn-login" onclick="handleLogin()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Sign In
+      </button>
+
+      <div class="divider">or</div>
+
+      <button class="btn btn-bio" id="btn-bio-login" onclick="handleBiometricLogin()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9v3.5c0 .83.67 1.5 1.5 1.5H8v-4h-.5A.5.5 0 017 9V8.5A5 5 0 0112 3.5a5 5 0 015 5V9a.5.5 0 01-.5.5H16v4h.5c.83 0 1.5-.67 1.5-1.5V9c0-3.87-3.13-7-7-7zm-2 10h4v5h-4v-5z"/></svg>
+        Sign In with Fingerprint / Face ID
+      </button>
+
+      <div class="field-hint" style="text-align:center; margin-top:10px;">
+        No account? <button class="section-link" onclick="switchAuth('register')">Create one →</button>
+      </div>
+
+    </div>
+
+    <!-- ── REGISTER PANE ── -->
+    <div class="auth-pane" id="apane-register">
+
+      <!-- Step progress -->
+      <div class="step-bar">
+        <div class="step-dot active" id="sdot-1">1</div>
+        <div class="step-line" id="sline-1"></div>
+        <div class="step-dot" id="sdot-2">2</div>
+        <div class="step-line" id="sline-2"></div>
+        <div class="step-dot" id="sdot-3">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 2C8.13 2 5 5.13 5 9v3H3v10h18V12h-2V9c0-3.87-3.13-7-7-7zm0 2a5 5 0 015 5v3H7V9a5 5 0 015-5zm0 9c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>
+        </div>
+      </div>
+
+      <!-- Step 1: Identity -->
+      <div class="reg-step active" id="rstep-1">
+        <div class="step-label">Step 1 of 3 — Personal Details</div>
+
+        <div class="field">
+          <div class="field-label">Full Name <span class="req">*</span></div>
+          <input class="field-input" id="r-name" type="text" autocomplete="name"
+                 placeholder="As on your ID card"/>
+          <div class="field-error" id="r-name-err"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">College Email <span class="req">*</span></div>
+          <input class="field-input" id="r-email" type="email" inputmode="email"
+                 autocomplete="email" placeholder="yourname@college.edu"
+                 autocapitalize="none" spellcheck="false"/>
+          <div class="field-error" id="r-email-err"></div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <div class="field-label">Mobile <span class="req">*</span></div>
+            <input class="field-input" id="r-mobile" type="tel" inputmode="tel"
+                   autocomplete="tel" placeholder="10-digit number"/>
+            <div class="field-error" id="r-mobile-err"></div>
+          </div>
+          <div class="field">
+            <div class="field-label">Date of Birth <span class="req">*</span></div>
+            <input class="field-input" id="r-dob" type="date" autocomplete="bday"/>
+            <div class="field-error" id="r-dob-err"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Student / Employee ID <span class="req">*</span></div>
+          <input class="field-input" id="r-emp-id" type="text" inputmode="numeric"
+                 placeholder="e.g. 1SI22CS001"/>
+          <div class="field-error" id="r-empid-err"></div>
+          <div class="field-hint">Numbers only — used for biometric binding</div>
+        </div>
+
+        <button class="btn btn-primary mt-8" onclick="regNext(1)">
+          Continue
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      <!-- Step 2: Organization -->
+      <div class="reg-step" id="rstep-2">
+        <div class="step-label">Step 2 of 3 — Organization & Role</div>
+
+        <div class="field">
+          <div class="field-label">Institution</div>
+          <input class="field-input" id="r-institute" type="text" readonly
+                 placeholder="Loading…"/>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <div class="field-label">Role <span class="req">*</span></div>
+            <select class="field-input" id="r-role" onchange="onRoleChange()">
+              <option value="">Select role…</option>
+            </select>
+            <div class="field-error" id="r-role-err"></div>
+          </div>
+          <div class="field">
+            <div class="field-label">Department <span class="req">*</span></div>
+            <select class="field-input" id="r-dept">
+              <option value="">Select dept…</option>
+            </select>
+            <div class="field-error" id="r-dept-err"></div>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field" id="field-r-class">
+            <div class="field-label">Year / Class <span class="req">*</span></div>
+            <select class="field-input" id="r-class">
+              <option value="">Select year…</option>
+            </select>
+            <div class="field-error" id="r-class-err"></div>
+          </div>
+          <div class="field" id="field-r-section">
+            <div class="field-label">Section <span class="req">*</span></div>
+            <select class="field-input" id="r-section">
+              <option value="">Select section…</option>
+            </select>
+            <div class="field-error" id="r-section-err"></div>
+          </div>
+        </div>
+
+        <div class="field hidden" id="field-r-designation">
+          <div class="field-label">Designation <span class="req">*</span></div>
+          <input class="field-input" id="r-designation" type="text"
+                 placeholder="e.g. Assistant Professor"/>
+          <div class="field-error" id="r-designation-err"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button class="btn btn-secondary" onclick="regBack(2)" style="flex:.8">← Back</button>
+          <button class="btn btn-primary" onclick="regNext(2)" style="flex:1.2">
+            Continue
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Security + Biometric -->
+      <div class="reg-step" id="rstep-3">
+        <div class="step-label">Step 3 of 3 — Security</div>
+
+        <div class="field">
+          <div class="field-label">Password <span class="req">*</span></div>
+          <div class="pw-wrap">
+            <input class="field-input" id="r-password" type="password" autocomplete="new-password"
+                   placeholder="Minimum 8 characters" oninput="checkPwStrength(this.value)"/>
+            <button class="pw-eye" type="button" onclick="togglePw('r-password')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="pw-strength" id="pw-bars">
+            <div class="pw-bar" id="pw-b1"></div>
+            <div class="pw-bar" id="pw-b2"></div>
+            <div class="pw-bar" id="pw-b3"></div>
+            <div class="pw-bar" id="pw-b4"></div>
+          </div>
+          <div class="pw-label" id="pw-label"></div>
+          <div class="field-error" id="r-pass-err"></div>
+          <div class="field-hint">8+ chars, at least one letter and one number</div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Confirm Password <span class="req">*</span></div>
+          <div class="pw-wrap">
+            <input class="field-input" id="r-confirm-pass" type="password" autocomplete="new-password"
+                   placeholder="Repeat your password"/>
+            <button class="pw-eye" type="button" onclick="togglePw('r-confirm-pass')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="field-error" id="r-cpass-err"></div>
+        </div>
+
+        <div class="card-section mt-12">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9v3H3v10h18V12h-2V9c0-3.87-3.13-7-7-7zm0 2a5 5 0 015 5v3H7V9a5 5 0 015-5zm0 9c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>
+            <span style="font-size:13px;font-weight:700;color:var(--text)">Set Up Biometric Login</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:10px;" id="bio-hint">
+            When you tap Create Account, we'll ask for your fingerprint or Face ID to secure your account.
+          </div>
+          <div class="info-chip" id="bio-status-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2C8.13 2 5 5.13 5 9v3H3v10h18V12h-2V9c0-3.87-3.13-7-7-7zm0 2a5 5 0 015 5v3H7V9a5 5 0 015-5zm0 9c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>
+            Biometric ready to set up
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:14px;">
+          <button class="btn btn-secondary" onclick="regBack(3)" style="flex:.8">← Back</button>
+          <button class="btn btn-primary" id="btn-register" onclick="handleRegister()" style="flex:1.2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+            Create Account
+          </button>
+        </div>
+
+      </div>
+
+      <div class="field-hint" style="text-align:center;margin-top:14px;">
+        Already have an account? <button class="section-link" onclick="switchAuth('login')">Sign in →</button>
+      </div>
+
+    </div>
+    <!-- /apane-register -->
+
+  </div>
+  <!-- /screen-auth -->
+
+
+  <!-- ════════════════════════════════════════
+       SCREEN: DASHBOARD (Home)
+  ════════════════════════════════════════ -->
+  <div class="screen has-nav" id="screen-home">
+
+    <div class="dash-greeting">
+      <div class="welcome-label">Good <span id="greeting-time">morning</span></div>
+      <h2 id="dash-name">Student</h2>
+      <div class="dash-date" id="dash-date"></div>
+    </div>
+
+    <!-- GPS bar -->
+    <div class="gps-bar" id="gps-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      <span id="gps-bar-text">Getting location…</span>
+    </div>
+
+    <!-- Offline queue banner -->
+    <div class="queue-banner" id="queue-banner" onclick="manualSync()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><path d="M22 6.5L4.5 22M4.5 6.5L22 22" stroke-width="1.5"/></svg>
+      <span id="queue-text">1 attendance queued offline — tap to sync</span>
+    </div>
+
+    <!-- Session banner -->
+    <div class="session-banner" id="session-banner" onclick="handleSessionAttendance()">
+      <div class="session-banner-dot"></div>
+      <div class="session-banner-text">
+        <div class="session-banner-title" id="session-banner-title">Live session open</div>
+        <div class="session-banner-sub" id="session-banner-sub">Tap to mark attendance</div>
+      </div>
+      <div class="session-banner-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <!-- Today's status card -->
+    <div class="status-card state-none" id="today-status-card">
+      <div class="status-header">
+        <div class="status-label">Today's Attendance</div>
+        <div class="status-badge none" id="today-badge">Not marked</div>
+      </div>
+      <div class="status-time-row">
+        <div class="time-block">
+          <div class="time-block-label">Check In</div>
+          <div class="time-block-value empty" id="today-checkin">--:--</div>
+        </div>
+        <div class="time-block">
+          <div class="time-block-label">Check Out</div>
+          <div class="time-block-value empty" id="today-checkout">--:--</div>
+        </div>
+      </div>
+      <div class="status-location" id="today-location" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span id="today-location-text"></span>
+      </div>
+      <div id="today-distance"></div>
+    </div>
+
+    <!-- Action button -->
+    <div class="action-area">
+      <button class="btn btn-primary btn-checkin" id="btn-main-action" onclick="handleMainAction()">
+        <div class="btn-checkin-glow"></div>
+        <svg id="action-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        <span id="action-label">Mark Attendance</span>
+      </button>
+      <button class="btn btn-danger mt-8 hidden" id="btn-checkout" onclick="handleCheckout()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        Mark Check-Out
+      </button>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-present">—</div>
+        <div class="stat-label">Present</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-absent">—</div>
+        <div class="stat-label">Absent</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+
+    <!-- Attendance % ring -->
+    <div class="ring-wrap">
+      <div class="ring-svg-wrap">
+        <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72">
+          <defs>
+            <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#4f6ef7"/>
+              <stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-track" cx="36" cy="36" r="30"/>
+          <circle class="ring-fill" id="ring-fill" cx="36" cy="36" r="30"
+                  stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+        </svg>
+        <div class="ring-center" id="ring-pct">—%</div>
+      </div>
+      <div class="ring-info">
+        <div class="ring-title">Attendance Rate</div>
+        <div class="ring-sub" id="ring-sub">Sign in to view your attendance statistics</div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="section-header">
+      <div class="section-title">Recent Attendance</div>
+      <button class="section-link" id="btn-load-more" onclick="loadMoreHistory()">View all</button>
+    </div>
+
+    <div class="history-list" id="history-list">
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        Mark your first attendance to see history here
+      </div>
+    </div>
+
+  </div>
+  <!-- /screen-home -->
+
+
+  <!-- ════════════════════════════════════════
+       SCREEN: HISTORY (full)
+  ════════════════════════════════════════ -->
+  <div class="screen has-nav" id="screen-history">
+    <div class="section-header" style="margin-bottom:16px;">
+      <div class="section-title">Full Attendance History</div>
+      <button class="section-link" onclick="exportCSV()">Export CSV</button>
+    </div>
+
+    <div class="field">
+      <input class="field-input" id="hist-search" type="search" placeholder="Filter by date (YYYY-MM-DD)…"
+             oninput="filterHistory(this.value)"/>
+    </div>
+
+    <div id="hist-summary" style="display:none;" class="card-section" style="margin-bottom:14px;"></div>
+
+    <div class="history-list" id="full-history-list">
+      <div class="empty-state"><div class="empty-state-icon">📋</div>No records yet</div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       SCREEN: PROFILE / SETTINGS
+  ════════════════════════════════════════ -->
+  <div class="screen has-nav" id="screen-profile">
+
+    <div class="card-section">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;" id="profile-avatar">S</div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);" id="profile-name">Student</div>
+          <div style="font-size:12px;color:var(--muted);" id="profile-email"></div>
+          <div class="info-chip" style="margin-top:6px;" id="profile-role-chip">Student</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-section">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;">Account Details</div>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="profile-details"></div>
+    </div>
+
+    <div class="card-section">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;">Device & Biometric</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6;">
+        Your biometric is bound to this device. If you switch devices, re-register biometric from the sign-in page.
+      </div>
+      <button class="btn btn-secondary" onclick="reRegisterBiometric()" style="margin-bottom:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9v3H3v10h18V12h-2V9c0-3.87-3.13-7-7-7zm0 2a5 5 0 015 5v3H7V9a5 5 0 015-5zm0 9c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>
+        Re-register Biometric
+      </button>
+    </div>
+
+    <div class="card-section">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;">Work Location Request</div>
+      <div class="wlr-card-sub">Need to mark attendance from a different location today? Submit a request for admin approval.</div>
+      <button class="btn btn-secondary" onclick="showWLR()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Request Location Override
+      </button>
+    </div>
+
+    <div class="card-section">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;">Appearance</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:14px;color:var(--text2);font-weight:500;">Dark Mode</span>
+        <button class="btn btn-secondary" style="width:auto;padding:8px 14px;font-size:12px;" onclick="toggleTheme()">Toggle</button>
+      </div>
+    </div>
+
+    <button class="btn btn-danger mt-8" onclick="handleLogout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Sign Out
+    </button>
+
+  </div>
+  <!-- /screen-profile -->
+
+
+  <!-- Work Location Request Sheet (modal) -->
+  <div id="wlr-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;" onclick="closeWLR(event)">
+    <div style="background:var(--surface);border-radius:22px 22px 0 0;padding:20px 16px 32px;width:100%;max-width:440px;margin:0 auto;">
+      <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 18px;"></div>
+      <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px;">Location Override Request</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Admin will approve or reject within the day</div>
+
+      <div class="field">
+        <div class="field-label">Date <span class="req">*</span></div>
+        <input class="field-input" id="wlr-date" type="date"/>
+      </div>
+      <div class="field">
+        <div class="field-label">Location Name <span class="req">*</span></div>
+        <input class="field-input" id="wlr-name" type="text" placeholder="e.g. Home, Client Office"/>
+      </div>
+      <div class="field">
+        <div class="field-label">Reason <span class="req">*</span></div>
+        <input class="field-input" id="wlr-reason" type="text" placeholder="Brief reason…"/>
+      </div>
+      <button class="btn btn-primary mt-8" id="btn-wlr-submit" onclick="submitWLR()">Submit Request</button>
+      <button class="btn btn-secondary mt-8" onclick="closeWLR()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="switchScreen('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="nav-item" id="nav-history" onclick="switchScreen('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      History
+    </button>
+    <button class="nav-item" id="nav-profile" onclick="switchScreen('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </button>
+  </nav>
+
+</div>
+<!-- /app-shell -->
+
+<!-- Scripts -->
+<script src="/tenant.js"></script>
+<script src="/app-student.js"></script>
+
+<!-- Service Worker registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      console.log('[PWA] SW registered:', reg.scope);
+      // Listen for sync complete messages from SW
+      navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data?.type === 'SYNC_COMPLETE') {
+          toast('✓ Offline attendance synced', 'success');
+          loadOfflineQueue();
+          refreshDashboard();
+        }
+        if (e.data?.type === 'BG_SESSION_CHECK') {
+          pollActiveSession();
+        }
+      });
+    }).catch(err => console.warn('[PWA] SW registration failed:', err));
+  });
+}
+</script>
+
+</body>
+</html>

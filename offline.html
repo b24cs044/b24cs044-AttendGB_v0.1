@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BioAttend : Offline</title>
+<style>
+:root {
+  /* Default: Light Theme */
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --acc: #4f6ef7;
+  --text: #111827;
+  --muted: #6b7280;
+}
+
+/* Automatically switch to dark mode if the device uses it */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #020917;
+    --card: #0b1224;
+    --acc: #4f6ef7;
+    --text: #eef2ff;
+    --muted: #94a3b8;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  transition: background .25s ease, color .25s ease;
+}
+
+.icon {
+  width: 72px;
+  height: 72px;
+  background: linear-gradient(135deg, #4f6ef7, #7c3aed);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 0 40px rgba(79,110,247,.25);
+}
+
+.icon svg {
+  width: 36px;
+  height: 36px;
+  fill: #fff;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 280px;
+  margin: 0 auto 24px;
+}
+
+button {
+  background: linear-gradient(135deg, #4f6ef7, #7c3aed);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+
+button:hover {
+  opacity: .88;
+}
+</style>
+</head>
+<body>
+  <div>
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M1 6l5 5 4-4 4 4 5-5"/><circle cx="12" cy="16" r="3"/></svg>
+    </div>
+    <h1>You're offline</h1>
+    <p>Connect to the internet and tap retry. Any attendance you mark offline will sync automatically when you're back online.</p>
+    <button onclick="location.reload()">Retry connection</button>
+  </div>
+</body>
+</html>

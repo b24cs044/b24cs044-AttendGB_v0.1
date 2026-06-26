@@ -1,0 +1,51 @@
+# ================================================================
+#  BioAttend  –  Cloudflare Pages  _headers
+#  Controls HTTP response headers for security, caching, PWA
+# ================================================================
+
+# ── SW must never be cached (always fetch fresh) ─────────────
+/sw.js
+  Cache-Control: no-store, no-cache, must-revalidate
+  Content-Type: application/javascript
+
+# ── Manifest ─────────────────────────────────────────────────
+/manifest.json
+  Cache-Control: public, max-age=3600
+  Content-Type: application/manifest+json
+
+# ── HTML pages — always revalidate ───────────────────────────
+/*.html
+  Cache-Control: no-cache
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# ── Root HTML ─────────────────────────────────────────────────
+/
+  Cache-Control: no-cache
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://script.google.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://script.google.com https://nominatim.openstreetmap.org; frame-src https://script.google.com; worker-src 'self'
+
+# ── JS/CSS — versioned files — long cache ────────────────────
+/app-student.js
+  Cache-Control: public, max-age=86400
+  Content-Type: application/javascript
+
+/tenant.js
+  Cache-Control: public, max-age=86400
+  Content-Type: application/javascript
+
+/styles.css
+  Cache-Control: public, max-age=86400
+
+# ── Icons — immutable ─────────────────────────────────────────
+/icons/*
+  Cache-Control: public, max-age=2592000, immutable
+
+# ── Fonts (if self-hosted) ────────────────────────────────────
+/fonts/*
+  Cache-Control: public, max-age=2592000, immutable
+  Access-Control-Allow-Origin: *

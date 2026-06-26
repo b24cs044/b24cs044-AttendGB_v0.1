@@ -1,0 +1,14 @@
+# ================================================================
+#  BioAttend  –  Cloudflare Pages  _redirects
+#  SPA fallback so that PWA deep-links always resolve to index.html
+# ================================================================
+
+# Tenant deep link shortcuts (?q=GUID)
+/?q=1   /?q=1   200
+/?q=2   /?q=2   200
+
+# Offline page passthrough
+/offline.html   /offline.html   200
+
+# SPA catch-all — must be last
+/*   /index.html   200
