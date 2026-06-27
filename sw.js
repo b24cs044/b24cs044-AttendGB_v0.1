@@ -4,21 +4,27 @@
 //           Background Sync, Push notifications
 // ============================================================
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE   = 'bioattend-shell-' + CACHE_VERSION;
 const DATA_CACHE    = 'bioattend-data-' + CACHE_VERSION;
 const SYNC_TAG      = 'attendance-sync';
 
 // Shell assets — cache on install
+// NOTE: this list must stay in sync with the actual files shipped
+// alongside this service worker (index.html is the login/home screen).
 const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/styles.css',
-  '/app.js',
   '/tenant.js',
+  '/app-student.js',
   '/manifest.json',
+  '/icons/icon-72.png',
+  '/icons/icon-96.png',
+  '/icons/icon-128.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/icon-512-maskable.png',
   '/offline.html'
 ];
 
