@@ -597,14 +597,13 @@ button,input,select{font-family:'Inter',sans-serif;}
           <div class="field-hint">Used to bind your biometric credential</div>
         </div>
 
-        <button class="btn btn-primary mt-10" onclick="regNext(1)">
+        <button type="button" class="btn btn-primary mt-10" onclick="regNext(1)">
           Continue
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
 
       <!-- Step 2 — Organisation & role -->
-    <!-- Step 2 -->
     <div class="reg-step" id="rstep-2">
       <div class="step-label">Step 2 of 3 — Organisation & Role</div>
 
@@ -622,7 +621,7 @@ button,input,select{font-family:'Inter',sans-serif;}
       <div class="row2">
         <div class="field">
           <div class="label">Role <span class="req">*</span></div>
-          <select class="input" id="r-role">
+          <select class="input" id="r-role" onchange="toggleDesignation(this.value)">
             <option value="student">Student</option>
             <option value="faculty">Faculty</option>
             <option value="admin">Admin</option>
@@ -666,7 +665,7 @@ button,input,select{font-family:'Inter',sans-serif;}
             <option value="B">Section B</option>
             <option value="C">Section C</option>
           </select>
-          <div class="field-err" id="r-sec-err"></div>
+          <div class="field-err" id="r-sec-err"></div> to <div class="field-err" id="r-section-err"></div>
         </div>
 
       </div>
@@ -677,10 +676,10 @@ button,input,select{font-family:'Inter',sans-serif;}
       </div>
 
       <div style="display:flex;gap:10px;margin-top:10px;">
-        <button class="btn btn-secondary" onclick="regBack(2)" style="flex:.7">← Back</button>
-        <button class="btn btn-primary" onclick="regNext(2)" style="flex:1.3">
+        <button type="button" class="btn btn-secondary" onclick="regBack(2)" style="flex:.7">← Back</button>
+        <button type="button" class="btn btn-primary" onclick="regNext(2)" style="flex:1.3">
           Continue
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
     </div>
