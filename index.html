@@ -1292,6 +1292,14 @@
 
     .history-item:hover { background: var(--color-surface-2); }
 
+    .history-thumb {
+      width: 40px; height: 40px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--color-border);
+    }
+
     .history-status-bar {
       width: 4px;
       height: 48px;
@@ -1747,6 +1755,41 @@
       <div style="display:flex; gap: var(--sp-3);">
         <button class="btn btn-ghost" style="flex:1" onclick="UI.closeModal('modal-wlr')">Cancel</button>
         <button class="btn btn-primary" style="flex:1" onclick="App.submitWLR()">Submit Request</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MARK ATTENDANCE MODAL ──────────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-mark-attendance" role="dialog" aria-modal="true" aria-label="Mark Attendance">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Mark Attendance</div>
+      <div class="modal-desc">Enter the lecture details below. Your photo will be captured automatically after you submit.</div>
+
+      <div class="form-group">
+        <label class="form-label" for="ma-subject">Subject Name / Code</label>
+        <input class="form-input" type="text" id="ma-subject" placeholder="e.g. Data Structures (CS201)" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="ma-date">Date</label>
+        <input class="form-input" type="date" id="ma-date" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Lecture Time Interval</label>
+        <div style="display:flex; align-items:center; gap: var(--sp-3);">
+          <input class="form-input" type="time" id="ma-time-start" style="flex:1" />
+          <span class="static-label">to</span>
+          <input class="form-input" type="time" id="ma-time-end" style="flex:1" />
+        </div>
+      </div>
+
+      <div id="ma-error" style="display:none; color: var(--color-danger); font-size: var(--text-xs); margin-bottom: var(--sp-3);"></div>
+
+      <div style="display:flex; gap: var(--sp-3);">
+        <button class="btn btn-ghost" style="flex:1" onclick="UI.closeModal('modal-mark-attendance')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" id="btn-ma-submit" onclick="App.submitMarkAttendance()">Submit</button>
       </div>
     </div>
   </div>
@@ -2225,7 +2268,7 @@
 
       <!-- CTA Buttons -->
       <div class="cta-area">
-        <button class="btn btn-success btn-full btn-cta" id="btn-mark-attendance" onclick="App.markAttendance()">
+        <button class="btn btn-success btn-full btn-cta" id="btn-mark-attendance" onclick="App.openMarkAttendanceModal()">
           <!-- Fingerprint icon -->
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/>
@@ -2953,9 +2996,14 @@
         const publicKeyOptions = {
           challenge,
           rp: {
-            // The relying party — must match the domain in production
+            // The relying party name shown in the OS biometric prompt.
+            // NOTE: intentionally NOT setting `id` here — WebAuthn requires
+            // rp.id to be exactly the current page's domain (or a registrable
+            // parent of it). Hardcoding/guessing it causes a SecurityError
+            // ("invalid domain") on preview/sandboxed/IP-based hosts. Omitting
+            // it lets the browser default to the current origin automatically,
+            // which is always valid.
             name: 'AttendGB',
-            id:   window.location.hostname || 'localhost',
           },
           user: {
             id:          userId,
@@ -2993,6 +3041,8 @@
       } catch (err) {
         if (err.name === 'NotAllowedError') {
           Toast.show('Biometric setup cancelled.', 'warning');
+        } else if (err.name === 'SecurityError') {
+          Toast.show('Biometrics need a secure context (HTTPS or localhost) on a real domain — not supported in this preview.', 'error');
         } else {
           Toast.show('Biometric setup failed: ' + err.message, 'error');
         }
@@ -3057,18 +3107,13 @@
     }
 
     /**
-     * Capture a face image from the front camera and store it in IndexedDB.
-     * This is best-effort — if the camera is unavailable, it fails silently.
-     * @param {string} trigger - Why we're capturing (e.g., 'login', 'attendance')
+     * Grab a single still frame from the front camera and return it as a
+     * compressed base64 JPEG. Throws if the camera is unavailable/denied —
+     * callers decide whether that should block the action or be silent.
      */
-    async function captureAndStoreFace(trigger) {
-      // Check camera permission without prompting
-      const perm = await navigator.permissions?.query({ name: 'camera' }).catch(() => null);
-      if (perm?.state === 'denied') return; // Camera denied, skip silently
-
+    async function _grabFaceFrame() {
       let stream = null;
       try {
-        // Request front camera
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: 320, height: 240 }
         });
@@ -3091,9 +3136,27 @@
         canvas.height = video.videoHeight || 240;
         canvas.getContext('2d').drawImage(video, 0, 0);
 
-        // Get image as base64 JPEG (compressed)
         const dataUrl   = canvas.toDataURL('image/jpeg', 0.7);
         const sizeBytes = Math.ceil((dataUrl.length * 3) / 4); // Rough base64 size
+        return { dataUrl, sizeBytes };
+      } finally {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+      }
+    }
+
+    /**
+     * Capture a face image from the front camera and store it in the
+     * rolling 3-photo queue. This is best-effort — if the camera is
+     * unavailable, it fails silently.
+     * @param {string} trigger - Why we're capturing (e.g., 'login', 'attendance')
+     */
+    async function captureAndStoreFace(trigger) {
+      // Check camera permission without prompting
+      const perm = await navigator.permissions?.query({ name: 'camera' }).catch(() => null);
+      if (perm?.state === 'denied') return; // Camera denied, skip silently
+
+      try {
+        const { dataUrl, sizeBytes } = await _grabFaceFrame();
 
         await DB.saveFace({
           timestamp:  Date.now(),
@@ -3104,10 +3167,27 @@
 
         if (typeof App !== 'undefined' && App.renderFaceQueue) App.renderFaceQueue();
 
-      } finally {
-        // Always release the camera
-        if (stream) stream.getTracks().forEach(t => t.stop());
+        return dataUrl;
+      } catch (err) {
+        // Best-effort — never throw for silent/background captures
+        return null;
       }
+    }
+
+    /**
+     * Capture a face image and store it in the rolling 3-photo queue,
+     * THROWING if the camera is unavailable/denied/cancelled. Use this for
+     * flows where the photo capture is a required step (e.g. submitting
+     * the Mark Attendance form), as opposed to captureAndStoreFace() which
+     * is silent/best-effort for background captures like login.
+     * @param {string} trigger
+     * @returns {Promise<string>} dataUrl of the captured photo
+     */
+    async function captureFaceRequired(trigger) {
+      const { dataUrl, sizeBytes } = await _grabFaceFrame();
+      await DB.saveFace({ timestamp: Date.now(), trigger, dataUrl, sizeBytes });
+      if (typeof App !== 'undefined' && App.renderFaceQueue) App.renderFaceQueue();
+      return dataUrl;
     }
 
     /**
@@ -3176,7 +3256,7 @@
     /** Get the current logged-in user object */
     function getUser() { return currentUser; }
 
-    return { init, login, logout, biometricLogin, registerBiometric, handleForgotStep, getUser, captureAndStoreFace };
+    return { init, login, logout, biometricLogin, registerBiometric, handleForgotStep, getUser, captureAndStoreFace, captureFaceRequired };
   })();
 
 
@@ -3775,71 +3855,131 @@
     }
 
     /**
-     * Core action: Mark Attendance.
-     * Validates GPS position, captures face (if possible), then records the punch.
-     * If offline, queues it in IndexedDB and registers a Background Sync.
+     * Open the Mark Attendance modal, pre-filled with today's date.
      */
-    async function markAttendance() {
-      const btn = document.getElementById('btn-mark-attendance');
+    function openMarkAttendanceModal() {
+      const dateInput = document.getElementById('ma-date');
+      if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+      document.getElementById('ma-subject').value     = '';
+      document.getElementById('ma-time-start').value  = '';
+      document.getElementById('ma-time-end').value    = '';
+      document.getElementById('ma-error').style.display = 'none';
+      UI.openModal('modal-mark-attendance');
+    }
+
+    /**
+     * Core action: Mark Attendance.
+     * Reads the subject/date/lecture-time form, validates GPS, captures the
+     * student's face photo, then stores the full attendance record (student
+     * details + subject + timestamp + location + photo) locally — synced
+     * to the cloud later when online.
+     */
+    async function submitMarkAttendance() {
+      const btn        = document.getElementById('btn-ma-submit');
+      const errorEl     = document.getElementById('ma-error');
+      const subject     = document.getElementById('ma-subject').value.trim();
+      const date        = document.getElementById('ma-date').value;
+      const timeStart   = document.getElementById('ma-time-start').value;
+      const timeEnd     = document.getElementById('ma-time-end').value;
+
+      errorEl.style.display = 'none';
+
+      if (!subject) { errorEl.textContent = 'Please enter the subject name or code.'; errorEl.style.display = ''; return; }
+      if (!date)    { errorEl.textContent = 'Please select a date.'; errorEl.style.display = ''; return; }
+      if (!timeStart || !timeEnd) { errorEl.textContent = 'Please enter the lecture start and end time.'; errorEl.style.display = ''; return; }
+
       UI.setButtonLoading(btn, true, 'Verifying…');
 
       try {
         const user = Auth.getUser() || await DB.getUser();
         if (!user) { Toast.show('Please sign in first.', 'warning'); return; }
 
-        // Step 1: Validate GPS
+        // Step 1: Validate GPS (fine/high-accuracy)
         const geo = GPS.getCurrentValidation();
         if (!geo) {
-          Toast.show('Waiting for GPS fix. Please wait and try again.', 'warning');
+          errorEl.textContent = 'Waiting for GPS fix. Please wait a moment and try again.';
+          errorEl.style.display = '';
           return;
         }
-
         if (!geo.isValid) {
-          Toast.show(
-            `You are ${geo.distance}m from class. Must be within ${geo.classLocation.radius}m.`,
-            'error'
-          );
+          errorEl.textContent = `You are ${geo.distance}m from class. Must be within ${geo.classLocation.radius}m.`;
+          errorEl.style.display = '';
           return;
         }
 
-        // Step 1b: Bluetooth proximity (best-effort, additive signal — never blocks if unavailable)
+        // Step 2: Bluetooth proximity (best-effort, additive signal)
         const btState = BT.getStatus();
 
-        // Step 2: Capture face (best-effort, non-blocking) — feeds the 3-photo rolling queue
-        Auth.captureAndStoreFace('attendance').catch(() => {});
+        // Step 3: Capture the student's photo/face — required for this flow
+        UI.setButtonLoading(btn, true, 'Capturing photo…');
+        let photoDataUrl;
+        try {
+          photoDataUrl = await Auth.captureFaceRequired('attendance');
+        } catch (camErr) {
+          errorEl.textContent = 'Camera access is required to mark attendance. Please allow camera permission and try again.';
+          errorEl.style.display = '';
+          return;
+        }
 
-        // Step 3: Build attendance record
+        // Step 4: Build the full attendance record
         const now    = new Date();
         const record = {
-          userId:     user.userId,
-          tenantId:   user.tenantId || 'default',
-          type:       'checkin',
-          timestamp:  now.toISOString(),
-          date:       now.toISOString().split('T')[0],
-          latitude:   geo.latitude,
-          longitude:  geo.longitude,
-          accuracy:   geo.accuracy,
-          distance:   geo.distance,
+          id:          `${user.userId}_${now.getTime()}`,
+          // 1. Student's name (from login details)
+          studentName: user.name || '',
+          studentId:   user.studentId || '',
+          userId:      user.userId,
+          tenantId:    user.tenantId || 'default',
+          // 2. Year, department, institute
+          year:        user.year || '',
+          department:  user.department || '',
+          institution: user.institution || '',
+          section:     user.section || '',
+          // 3. Date and time of submission
+          type:        'checkin',
+          timestamp:   now.toISOString(),
+          date:        date,
+          submittedAt: now.toISOString(),
+          // 4. Subject/course information
+          subject:     subject,
+          lectureStart: timeStart,
+          lectureEnd:   timeEnd,
+          // 5. Captured photo/face data
+          photoDataUrl: photoDataUrl,
+          // Location & proximity signals
+          latitude:    geo.latitude,
+          longitude:   geo.longitude,
+          accuracy:    geo.accuracy,
+          distance:    geo.distance,
           bluetoothVerified: btState.connected,
           bluetoothDevice:   btState.deviceName || null,
-          deviceGUID: localStorage.getItem('attendgb_device_guid') || '',
+          deviceGUID:  localStorage.getItem('attendgb_device_guid') || '',
+          status:      'present',
+          synced:      false,
         };
 
-        if (navigator.onLine) {
-          // Online: push directly to GAS
-          await GAS.markAttendance(record);
-          await DB.addRecord({ ...record, id: `${user.userId}_${record.timestamp}`, status: 'present' });
+        // Step 5: Store — local-first, then sync to backend when online
+        await DB.addRecord(record);
+
+        if (navigator.onLine && GAS.isConfigured()) {
+          try {
+            await GAS.markAttendance(record);
+            record.synced = true;
+            await DB.addRecord(record); // update synced flag
+          } catch (syncErr) {
+            // Stay queued locally if the cloud push fails
+            await DB.addToQueue(record);
+          }
         } else {
-          // Offline: queue locally
+          // Offline or no backend configured yet — queue for later sync
           await DB.addToQueue(record);
-          // Request background sync via Service Worker
           if ('serviceWorker' in navigator && 'SyncManager' in window) {
             const reg = await navigator.serviceWorker.ready;
-            await reg.sync.register('attendance-sync');
+            await reg.sync.register('attendance-sync').catch(() => {});
           }
         }
 
-        // Step 4: Update UI
+        // Step 6: Update UI
         isCheckedIn   = true;
         checkInRecord = record;
 
@@ -3849,24 +3989,25 @@
         document.getElementById('today-badge').className = 'badge badge-success';
         document.getElementById('today-badge').textContent = 'Present';
         document.getElementById('today-location').textContent = geo.distance != null
-          ? `Location: ${geo.classLocation.name} (${geo.distance}m away)`
-          : `Location: ${geo.latitude.toFixed(5)}, ${geo.longitude.toFixed(5)} (±${geo.accuracy}m)`;
+          ? `${subject} · ${geo.classLocation.name} (${geo.distance}m away)`
+          : `${subject} · ${geo.latitude.toFixed(5)}, ${geo.longitude.toFixed(5)} (±${geo.accuracy}m)`;
 
-        // Animate ring
-        const stats = await loadAttendanceData();
+        await loadAttendanceData();
+        await renderFaceQueue();
 
-        // Show checkout button
         document.getElementById('btn-checkout').classList.add('visible');
 
+        UI.closeModal('modal-mark-attendance');
+
         Toast.show(
-          navigator.onLine ? 'Attendance marked!' : 'Attendance queued (offline)',
-          navigator.onLine ? 'success' : 'warning'
+          record.synced ? 'Attendance marked and synced!' : 'Attendance marked (saved locally, will sync when online)',
+          record.synced ? 'success' : 'warning'
         );
 
         updateQueueBanner();
 
       } finally {
-        UI.setButtonLoading(btn, false, 'Mark Attendance');
+        UI.setButtonLoading(btn, false, 'Submit');
       }
     }
 
@@ -4139,7 +4280,8 @@
 
     return {
       init,
-      markAttendance,
+      openMarkAttendanceModal,
+      submitMarkAttendance,
       markCheckout,
       loadAttendanceData,
       triggerManualSync,
@@ -4223,10 +4365,15 @@
 
       const item = document.createElement('div');
       item.className = 'history-item';
+      const lectureTime = (record.lectureStart && record.lectureEnd) ? `${record.lectureStart}–${record.lectureEnd}` : '';
+      const subjectLine = record.subject ? `${record.subject}${lectureTime ? ' · ' + lectureTime : ''}` : null;
+      const thumb = record.photoDataUrl ? `<img class="history-thumb" src="${record.photoDataUrl}" alt="Captured face" />` : '';
       item.innerHTML = `
+        ${thumb}
         <div class="history-status-bar ${status}"></div>
         <div class="history-info">
           <div class="history-date font-display">${dateStr}</div>
+          ${subjectLine ? `<div class="history-times">${subjectLine}</div>` : ''}
           <div class="history-times">In: ${timeStr} · ${record.distance != null ? `${record.distance}m from class` : 'Location N/A'}</div>
         </div>
         <div class="history-meta">
