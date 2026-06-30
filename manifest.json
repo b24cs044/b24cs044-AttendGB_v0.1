@@ -1,61 +1,45 @@
 {
-  "name": "BioAttend – Student",
-  "short_name": "BioAttend",
-  "description": "Biometric & GPS-based attendance marking for students",
-  "start_url": "/index.html",
-  "id": "/index.html",
+  "name": "AttendGB — Smart Attendance",
+  "short_name": "AttendGB",
+  "description": "Biometric and GPS-based attendance tracking for educational institutions.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#020917",
-  "theme_color": "#020917",
-  "categories": ["education", "productivity"],
+  "background_color": "#0A1628",
+  "theme_color": "#4F46E5",
+  "lang": "en-IN",
   "icons": [
-    {
-      "src": "icons/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icons/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icons/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any"
-    },
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icons/icon-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "icons/screenshot-home.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard with attendance ring and GPS widget"
+    }
+  ],
+  "categories": ["education", "productivity", "utilities"],
   "shortcuts": [
     {
       "name": "Mark Attendance",
       "short_name": "Check In",
       "description": "Quickly mark your attendance",
-      "url": "/index.html?action=checkin",
-      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+      "url": "/?action=mark",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
