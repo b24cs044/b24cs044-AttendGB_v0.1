@@ -2517,7 +2517,22 @@
   </script>
   <script>
     window.ATTEND_GB_CONFIG = {
-      gasUrl: 'https://script.google.com/macros/library/d/1DnJ-qF9SdkDYys4E0MT2Lpkxm8XgCgiqQkWU_JsDWDCi7LnNnQU9MnqJ/1'
+      /*
+       * ══════════════════════════════════════════════════════════════
+       * BACKEND CONFIGURATION — Set your GAS deployment URL here.
+       *
+       * How to get this URL:
+       *  1. Open your Google Apps Script project (script.google.com)
+       *  2. Click  Deploy → New deployment → Web app
+       *  3. Set "Execute as" = Me, "Who has access" = Anyone
+       *  4. Click Deploy and copy the URL (ends in /exec)
+       *  5. Paste it below as the value of gasUrl
+       *
+       * Leave empty ('') to run fully offline/local — all data will be
+       * stored in IndexedDB only and synced when a URL is provided.
+       * ══════════════════════════════════════════════════════════════
+       */
+      gasUrl: '', // ← Paste your GAS /exec URL here
     };
   </script>
   <!-- ================================================================
@@ -2737,17 +2752,24 @@
      */
     async function post(payload) {
       if (!GAS_URL) {
-        throw new Error('GAS_URL is not configured. Set window.ATTEND_GB_CONFIG.gasUrl');
+        throw new Error('GAS backend not configured. Add your deployment URL to window.ATTEND_GB_CONFIG.gasUrl');
       }
 
+      /*
+       * Google Apps Script web apps redirect the initial POST to a new URL
+       * (302 → /exec?...). We must follow that redirect with the same
+       * method, which `fetch` does by default for 302. We also need
+       * `redirect: 'follow'` explicitly so the browser follows the chain.
+       */
       const response = await fetch(GAS_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        method:      'POST',
+        redirect:    'follow',
+        headers:     { 'Content-Type': 'text/plain;charset=utf-8' },
+        body:        JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error(`Network error: ${response.status} ${response.statusText}`);
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -4017,7 +4039,9 @@
 
     /**
      * Mark Check-Out.
-     * Follows the same GPS + face + queue logic as check-in.
+     * Inherits subject/lecture info from today's check-in record so the
+     * GAS backend gets all required columns. Follows same local-first sync
+     * logic as check-in.
      */
     async function markCheckout() {
       const btn = document.getElementById('btn-checkout');
@@ -4025,39 +4049,82 @@
 
       try {
         const user = Auth.getUser() || await DB.getUser();
-        const geo  = GPS.getCurrentValidation();
+        if (!user) { Toast.show('Please sign in first.', 'warning'); return; }
 
-        if (!geo) { Toast.show('Waiting for GPS fix.', 'warning'); return; }
+        const geo = GPS.getCurrentValidation();
+        if (!geo) { Toast.show('Waiting for GPS fix. Try again in a moment.', 'warning'); return; }
 
-        const now    = new Date();
+        const btState = BT.getStatus();
+        const now     = new Date();
+
+        /* Carry forward subject/lecture info from today's check-in so the
+           GAS Attendance sheet row is complete. */
+        const inheritedSubject      = checkInRecord?.subject      || '';
+        const inheritedLectureStart = checkInRecord?.lectureStart || '';
+        const inheritedLectureEnd   = checkInRecord?.lectureEnd   || '';
+
         const record = {
-          userId:     user?.userId,
-          tenantId:   user?.tenantId || 'default',
-          type:       'checkout',
-          timestamp:  now.toISOString(),
-          date:       now.toISOString().split('T')[0],
-          latitude:   geo.latitude,
-          longitude:  geo.longitude,
-          accuracy:   geo.accuracy,
-          deviceGUID: localStorage.getItem('attendgb_device_guid') || '',
+          id:          `${user.userId}_checkout_${now.getTime()}`,
+          studentName: user.name       || '',
+          studentId:   user.studentId  || '',
+          userId:      user.userId,
+          tenantId:    user.tenantId   || 'default',
+          year:        user.year       || '',
+          department:  user.department || '',
+          institution: user.institution|| '',
+          section:     user.section    || '',
+          type:        'checkout',
+          timestamp:   now.toISOString(),
+          date:        now.toISOString().split('T')[0],
+          submittedAt: now.toISOString(),
+          subject:     inheritedSubject,
+          lectureStart: inheritedLectureStart,
+          lectureEnd:   inheritedLectureEnd,
+          photoDataUrl: '',          // No photo required at checkout
+          latitude:    geo.latitude,
+          longitude:   geo.longitude,
+          accuracy:    geo.accuracy,
+          distance:    geo.distance ?? null,
+          bluetoothVerified: btState.connected,
+          bluetoothDevice:   btState.deviceName || null,
+          deviceGUID:  localStorage.getItem('attendgb_device_guid') || '',
+          status:      'present',
+          synced:      false,
         };
 
-        if (navigator.onLine) {
-          await GAS.markAttendance(record);
+        // Local-first: always save to IndexedDB immediately
+        await DB.addRecord(record);
+
+        if (navigator.onLine && GAS.isConfigured()) {
+          try {
+            await GAS.markAttendance(record);
+            record.synced = true;
+            await DB.addRecord(record);
+          } catch (syncErr) {
+            await DB.addToQueue(record);
+          }
         } else {
           await DB.addToQueue(record);
           if ('serviceWorker' in navigator && 'SyncManager' in window) {
             const reg = await navigator.serviceWorker.ready;
-            await reg.sync.register('attendance-sync');
+            await reg.sync.register('attendance-sync').catch(() => {});
           }
         }
+
+        isCheckedIn = false;
 
         const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         document.getElementById('checkout-time').textContent = timeStr;
         document.getElementById('checkout-time').classList.remove('placeholder');
         document.getElementById('btn-checkout').classList.remove('visible');
 
-        Toast.show('Check-out recorded', 'success');
+        await loadAttendanceData();
+        updateQueueBanner();
+
+        Toast.show(
+          record.synced ? 'Check-out recorded and synced!' : 'Check-out saved (will sync when online)',
+          record.synced ? 'success' : 'warning'
+        );
 
       } finally {
         UI.setButtonLoading(btn, false, 'Mark Check-Out');
@@ -4065,7 +4132,10 @@
     }
 
     /**
-     * Load attendance records from IndexedDB and update dashboard stats.
+     * Load attendance records from IndexedDB, update dashboard stats, and
+     * restore today's check-in / check-out UI state so the checkout button
+     * is always visible if the user already checked in today but hasn't
+     * checked out — even after a page refresh.
      * @returns {object} { present, absent, total, percentage }
      */
     async function loadAttendanceData() {
@@ -4092,6 +4162,47 @@
       document.getElementById('stat-absent').textContent  = absent;
       document.getElementById('stat-total').textContent   = total;
 
+      // ── Restore today's check-in / check-out state ──────────────────
+      // This ensures the checkout button and time labels survive page refresh.
+      const today        = new Date().toISOString().split('T')[0];
+      const todayCheckin = records
+        .filter(r => r.type === 'checkin' && r.date === today)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+      const todayCheckout = records
+        .filter(r => r.type === 'checkout' && r.date === today)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+      if (todayCheckin) {
+        // Restore in-memory check-in reference (used by checkout to inherit subject)
+        if (!checkInRecord) checkInRecord = todayCheckin;
+        isCheckedIn = !todayCheckout; // still checked in only if no checkout yet
+
+        const inTime = new Date(todayCheckin.timestamp)
+          .toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('checkin-time').textContent = inTime;
+        document.getElementById('checkin-time').classList.remove('placeholder');
+        document.getElementById('today-badge').className = 'badge badge-success';
+        document.getElementById('today-badge').textContent = 'Present';
+        document.getElementById('today-location').textContent = todayCheckin.subject
+          ? `${todayCheckin.subject} · ${todayCheckin.latitude?.toFixed(5)}, ${todayCheckin.longitude?.toFixed(5)}`
+          : (todayCheckin.distance != null
+              ? `${todayCheckin.distance}m from class`
+              : `${todayCheckin.latitude?.toFixed(5)}, ${todayCheckin.longitude?.toFixed(5)}`);
+
+        if (!todayCheckout) {
+          document.getElementById('btn-checkout').classList.add('visible');
+        }
+      }
+
+      if (todayCheckout) {
+        const outTime = new Date(todayCheckout.timestamp)
+          .toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('checkout-time').textContent = outTime;
+        document.getElementById('checkout-time').classList.remove('placeholder');
+        document.getElementById('btn-checkout').classList.remove('visible');
+      }
+      // ────────────────────────────────────────────────────────────────
+
       // Refresh history screen
       History.render(records);
 
@@ -4100,24 +4211,21 @@
 
     /** Manually trigger a sync of queued attendance records */
     async function triggerManualSync() {
-      if (!navigator.onLine) {
-        Toast.show('No internet connection.', 'warning');
-        return;
-      }
+      if (!navigator.onLine) { Toast.show('No internet connection.', 'warning'); return; }
+      if (!GAS.isConfigured()) { Toast.show('No backend configured — records saved locally.', 'info'); return; }
 
       const queue = await DB.getAllQueue();
-      if (queue.length === 0) {
-        Toast.show('Nothing to sync — all up to date.', 'info');
-        return;
-      }
+      if (queue.length === 0) { Toast.show('Nothing to sync — all up to date.', 'info'); return; }
 
       Toast.show(`Syncing ${queue.length} record(s)…`, 'info');
 
       let synced = 0;
       for (const record of queue) {
         try {
+          // Ensure record has an id before sending to GAS
+          if (!record.id) record.id = `${record.userId}_${record.timestamp || Date.now()}`;
           await GAS.markAttendance(record);
-          await DB.addRecord({ ...record, id: `${record.userId}_${record.timestamp}`, status: 'present' });
+          await DB.addRecord({ ...record, synced: true });
           await DB.removeFromQueue(record.localId);
           synced++;
         } catch (err) {
