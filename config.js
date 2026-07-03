@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * AttendGB — Runtime Configuration
+ * AttendX — Runtime Configuration
  * ============================================================
  * This file is loaded BEFORE the main app JavaScript.
  * It sets window.ATTEND_GB_CONFIG so that the app modules
@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-window.ATTEND_GB_CONFIG = {
+window.ATTEND_X_CONFIG = {
 
   /* ── Backend ─────────────────────────────────────────────── */
 
@@ -29,7 +29,7 @@ window.ATTEND_GB_CONFIG = {
   /* ── Application metadata ────────────────────────────────── */
 
   appVersion:  '1.0.0',
-  appName:     'AttendGB',
+  appName:     'AttendX',
 
   /* ── Geofence / GPS ──────────────────────────────────────── */
 
@@ -100,5 +100,5 @@ window.ATTEND_GB_CONFIG = {
    * Background sync tag registered with the Service Worker.
    * Must match the tag used in sw.js.
    */
-  bgSyncTag: 'attendgb-sync',
+  bgSyncTag: 'attendx-sync',
 };

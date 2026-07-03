@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  AttendGB — Biometric & GPS Attendance PWA                          ║
+  ║  AttendX — Biometric & GPS Attendance PWA                          ║
   ║  Version: 1.0.0                                                     ║
   ║  Stack: Vanilla HTML5 / CSS3 / ES6+, WebAuthn, IndexedDB, GAS      ║
   ║  Deployment: Cloudflare Pages                                       ║
@@ -11,17 +11,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="AttendGB — Smart biometric and GPS attendance for institutions." />
+  <meta name="description" content="AttendX — Smart biometric and GPS attendance for institutions." />
 
   <!-- PWA / iOS meta tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="AttendGB" />
+  <meta name="apple-mobile-web-app-title" content="AttendX" />
   <meta name="theme-color" content="#0A1628" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="manifest" href="manifest.json" />
 
-  <title>AttendGB — Smart Attendance</title>
+  <title>AttendX — Smart Attendance</title>
 
   <!-- Google Fonts: Space Grotesk (display) + Inter (body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -2637,7 +2637,7 @@
       </div>
 
       <div style="text-align:center; font-size:var(--text-xs); color:var(--color-text-muted); margin-top:var(--sp-5); padding-bottom:var(--sp-4);">
-        AttendGB v1.0.0 · Connected to NIT Meghalaya
+        AttendX v1.0.0 · Connected to NIT Meghalaya
       </div>
     </section>
 
@@ -2686,16 +2686,16 @@
         navigator.serviceWorker
           .register('/sw.js', { scope: '/' })
           .then(reg => {
-            console.log('[AttendGB] Service Worker registered:', reg.scope);
+            console.log('[AttendX] Service Worker registered:', reg.scope);
           })
           .catch(err => {
-            console.warn('[AttendGB] Service Worker registration failed:', err);
+            console.warn('[AttendX] Service Worker registration failed:', err);
           });
       });
     }
   </script>
   <script>
-    window.ATTEND_GB_CONFIG = {
+    window.ATTEND_X_CONFIG = {
       /*
        * ══════════════════════════════════════════════════════════════
        * BACKEND CONFIGURATION — Set your GAS deployment URL here.
@@ -2726,7 +2726,7 @@
    * ====================================================================
    */
   const DB = (() => {
-    const DB_NAME    = 'attendgb';
+    const DB_NAME    = 'attendx';
     const DB_VERSION = 2;
 
     /* Store names */
@@ -3040,15 +3040,15 @@
      */
     async function init() {
       try {
-        const raw = localStorage.getItem('attendgb_session') || sessionStorage.getItem('attendgb_session');
+        const raw = localStorage.getItem('attendx_session') || sessionStorage.getItem('attendx_session');
         if (raw) {
           const session = JSON.parse(raw);
           if (!GAS.isConfigured()) {
             // Re-validate that this user is still a genuinely registered account
             const account = await DB.getRegisteredUser(session.user?.email);
             if (!account) {
-              localStorage.removeItem('attendgb_session');
-              sessionStorage.removeItem('attendgb_session');
+              localStorage.removeItem('attendx_session');
+              sessionStorage.removeItem('attendx_session');
               return;
             }
           }
@@ -3057,7 +3057,7 @@
         }
       } catch (err) {
         console.warn('[Auth] Session restore failed:', err);
-        localStorage.removeItem('attendgb_session');
+        localStorage.removeItem('attendx_session');
       }
     }
 
@@ -3081,7 +3081,7 @@
       UI.showScreen('screen-home');
 
       // Check if biometric credential is registered on this device
-      const hasBio = localStorage.getItem('attendgb_bio_registered') === 'true';
+      const hasBio = localStorage.getItem('attendx_bio_registered') === 'true';
       if (hasBio) {
         document.getElementById('btn-biometric-login').style.display = 'flex';
         document.getElementById('biometric-status-sub').textContent  = 'Biometrics are active on this device';
@@ -3133,9 +3133,9 @@
 
         // Persist session if "Remember me" is checked
         if (remember) {
-          localStorage.setItem('attendgb_session', JSON.stringify({ user }));
+          localStorage.setItem('attendx_session', JSON.stringify({ user }));
         } else {
-          sessionStorage.setItem('attendgb_session', JSON.stringify({ user }));
+          sessionStorage.setItem('attendx_session', JSON.stringify({ user }));
         }
 
         // Save to IndexedDB for offline access
@@ -3208,7 +3208,7 @@
             // ("invalid domain") on preview/sandboxed/IP-based hosts. Omitting
             // it lets the browser default to the current origin automatically,
             // which is always valid.
-            name: 'AttendGB',
+            name: 'AttendX',
           },
           user: {
             id:          userId,
@@ -3233,8 +3233,8 @@
 
         // Encode and store the credential ID for future authentication
         const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-        localStorage.setItem('attendgb_credential_id', credentialId);
-        localStorage.setItem('attendgb_bio_registered', 'true');
+        localStorage.setItem('attendx_credential_id', credentialId);
+        localStorage.setItem('attendx_bio_registered', 'true');
 
         // Update UI
         document.getElementById('btn-biometric-login').style.display  = 'flex';
@@ -3263,7 +3263,7 @@
         return;
       }
 
-      const storedCredId = localStorage.getItem('attendgb_credential_id');
+      const storedCredId = localStorage.getItem('attendx_credential_id');
       if (!storedCredId) {
         Toast.show('No biometric credential found. Please set it up first.', 'warning');
         return;
@@ -3449,10 +3449,10 @@
 
     /** Sign out: clear session and return to login screen */
     function logout() {
-      if (!confirm('Sign out of AttendGB?')) return;
+      if (!confirm('Sign out of AttendX?')) return;
       currentUser = null;
-      localStorage.removeItem('attendgb_session');
-      sessionStorage.removeItem('attendgb_session');
+      localStorage.removeItem('attendx_session');
+      sessionStorage.removeItem('attendx_session');
       document.getElementById('bottom-nav').classList.remove('visible');
       UI.showScreen('screen-login');
       Toast.show('Signed out successfully', 'info');
@@ -3629,10 +3629,10 @@
       UI.setButtonLoading(btn, true);
 
       /* Collect a unique device GUID for this registration */
-      let deviceGUID = localStorage.getItem('attendgb_device_guid');
+      let deviceGUID = localStorage.getItem('attendx_device_guid');
       if (!deviceGUID) {
         deviceGUID = crypto.randomUUID ? crypto.randomUUID() : _generateUUID();
-        localStorage.setItem('attendgb_device_guid', deviceGUID);
+        localStorage.setItem('attendx_device_guid', deviceGUID);
       }
 
       const userData = {
@@ -4245,7 +4245,7 @@
           distance:    geo.distance,
           bluetoothVerified: btState.connected,
           bluetoothDevice:   btState.deviceName || null,
-          deviceGUID:  localStorage.getItem('attendgb_device_guid') || '',
+          deviceGUID:  localStorage.getItem('attendx_device_guid') || '',
           status:      'present',
           synced:      false,
         };
@@ -4358,7 +4358,7 @@
           distance:    geo.distance ?? null,
           bluetoothVerified: btState.connected,
           bluetoothDevice:   btState.deviceName || null,
-          deviceGUID:  localStorage.getItem('attendgb_device_guid') || '',
+          deviceGUID:  localStorage.getItem('attendx_device_guid') || '',
           status:      'present',
           synced:      false,
         };
@@ -4602,7 +4602,7 @@
       const result = await deferredInstallPrompt.userChoice;
       if (result.outcome === 'accepted') {
         document.getElementById('install-prompt').classList.remove('visible');
-        Toast.show('AttendGB installed successfully!', 'success');
+        Toast.show('AttendX installed successfully!', 'success');
       }
       deferredInstallPrompt = null;
     }
@@ -4630,7 +4630,7 @@
     /** Clear cached data (does not delete attendance records) */
     function clearLocalData() {
       if (!confirm('This will clear cached preferences. Attendance records are kept. Continue?')) return;
-      ['attendgb_session'].forEach(k => localStorage.removeItem(k));
+      ['attendx_session'].forEach(k => localStorage.removeItem(k));
       Toast.show('Cache cleared', 'info');
     }
 
@@ -4833,7 +4833,7 @@
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      a.href = url; a.download = `attendgb_${new Date().toISOString().split('T')[0]}.csv`;
+      a.href = url; a.download = `attendx_${new Date().toISOString().split('T')[0]}.csv`;
       a.click(); URL.revokeObjectURL(url);
       Toast.show('CSV exported!', 'success');
     }
@@ -4986,7 +4986,7 @@
       const isDark   = html.getAttribute('data-theme') === 'dark';
       const newTheme = isDark ? 'light' : 'dark';
       html.setAttribute('data-theme', newTheme);
-      localStorage.setItem('attendgb_theme', newTheme);
+      localStorage.setItem('attendx_theme', newTheme);
 
       // Update toggle icon
       document.getElementById('icon-theme-dark').style.display  = isDark ? '' : 'none';
@@ -5106,7 +5106,7 @@
    */
   document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme preference before anything renders (prevents flash)
-    const savedTheme = localStorage.getItem('attendgb_theme') || 'dark';
+    const savedTheme = localStorage.getItem('attendx_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     const isDark = savedTheme === 'dark';
     const themeSw = document.getElementById('theme-toggle-switch');

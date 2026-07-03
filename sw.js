@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * AttendGB — Service Worker (sw.js)
+ * AttendX — Service Worker (sw.js)
  * ============================================================
  * Responsibilities:
  *  1. Cache-first strategy for app shell assets (offline support)
@@ -37,8 +37,8 @@
  * Old caches are deleted in the 'activate' phase.
  */
 const CACHE_VERSION   = 'v1';
-const CACHE_APP_SHELL = `attendgb-shell-${CACHE_VERSION}`;
-const CACHE_DYNAMIC   = `attendgb-dynamic-${CACHE_VERSION}`;
+const CACHE_APP_SHELL = `attendx-shell-${CACHE_VERSION}`;
+const CACHE_DYNAMIC   = `attendx-dynamic-${CACHE_VERSION}`;
 
 /**
  * These URLs form the "app shell" — the minimum set of files
@@ -56,7 +56,7 @@ const APP_SHELL_URLS = [
 const SYNC_TAG_ATTENDANCE = 'attendance-sync';
 
 /* ── IndexedDB constants (must mirror DB module in index.html) ── */
-const IDB_NAME         = 'attendgb';
+const IDB_NAME         = 'attendx';
 const IDB_VERSION      = 1;
 const STORE_QUEUE      = 'attendance_queue';
 const STORE_RECORDS    = 'attendance_records';
@@ -103,7 +103,7 @@ self.addEventListener('activate', (event) => {
         const deletions = cacheNames
           .filter((name) => {
             /* Delete caches that belong to this app but are a different version */
-            return name.startsWith('attendgb-') &&
+            return name.startsWith('attendx-') &&
                    name !== CACHE_APP_SHELL &&
                    name !== CACHE_DYNAMIC;
           })
@@ -234,7 +234,7 @@ function offlineFallback() {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>AttendGB — Offline</title>
+  <title>AttendX — Offline</title>
   <style>
     body { font-family: system-ui, sans-serif; display:flex; flex-direction:column;
            align-items:center; justify-content:center; min-height:100vh; margin:0;
@@ -245,7 +245,7 @@ function offlineFallback() {
 </head>
 <body>
   <h1>📵 You are offline</h1>
-  <p>AttendGB is not available right now. Any attendance marked will be queued and synced when you reconnect.</p>
+  <p>AttendX is not available right now. Any attendance marked will be queued and synced when you reconnect.</p>
 </body>
 </html>`,
     {
@@ -387,7 +387,7 @@ async function broadcastSessionCheck() {
  * ============================================================= */
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'AttendGB', body: 'New notification' };
+  let data = { title: 'AttendX', body: 'New notification' };
 
   if (event.data) {
     try {
@@ -401,7 +401,7 @@ self.addEventListener('push', (event) => {
     body:    data.body,
     icon:    '/icons/icon-192.png',
     badge:   '/icons/icon-192.png',
-    tag:     data.tag || 'attendgb-notification',
+    tag:     data.tag || 'attendx-notification',
     data:    { url: data.url || '/' },
     vibrate: [200, 100, 200],
   };
@@ -462,7 +462,7 @@ self.addEventListener('message', (event) => {
  * ============================================================= */
 
 /**
- * Opens the shared AttendGB IndexedDB database.
+ * Opens the shared AttendX IndexedDB database.
  *
  * @returns {Promise<IDBDatabase>}
  */
@@ -540,7 +540,7 @@ function deleteFromStore(db, storeName, key) {
 
 /**
  * Attempt to read the GAS URL from a special IDB metadata store.
- * The main page writes 'attendgb_gas_url' to localStorage; we
+ * The main page writes 'attendx_gas_url' to localStorage; we
  * cannot read localStorage from SW, so the page mirrors it to IDB.
  *
  * @returns {Promise<string>}

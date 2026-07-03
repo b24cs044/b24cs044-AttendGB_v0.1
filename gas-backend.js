@@ -743,6 +743,7 @@ function deriveTenant(institution) {
   const map = {
     'NIT Meghalaya': 'nitm',
     'TMSS College':  'tmss',
+    'SIT Tumkur' : 'sitm',
   };
   return map[institution] || 'default';
 }
