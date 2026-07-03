@@ -1093,6 +1093,112 @@
     .gps-status-dot.active  { background: var(--color-success); animation: pulse 2s ease infinite; }
     .gps-status-dot.error   { background: var(--color-danger); }
 
+    /* ── Enhanced GPS card layout ─────────────────────────────────── */
+    .gps-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .gps-place-name {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+    .gps-latlng-row {
+      font-size: 10px;
+      color: var(--color-text-secondary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+    .gps-altitude-row {
+      font-size: 10px;
+      color: var(--color-text-muted);
+    }
+    .gps-accuracy-row {
+      font-size: var(--text-xs);
+      color: var(--color-text-secondary);
+      margin-top: 1px;
+    }
+    .gps-maps-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--color-primary);
+      background: var(--color-primary-glow);
+      border-radius: var(--radius-full);
+      padding: 5px 10px;
+      flex-shrink: 0;
+      text-decoration: none;
+      transition: background var(--transition-fast);
+    }
+    .gps-maps-btn:hover { background: rgba(79,70,229,0.28); }
+
+    /* ── History paired item (check-in + check-out on one card) ───── */
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-3);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--sp-4);
+      transition: background var(--transition-fast);
+    }
+    .history-item:hover { background: var(--color-surface-2); }
+    .history-times-row {
+      display: flex;
+      gap: var(--sp-4);
+      margin-top: 4px;
+    }
+    .history-time-block { display: flex; flex-direction: column; }
+    .history-time-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+      font-weight: 700;
+    }
+    .history-time-value {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+    .history-time-value.no-checkout { color: var(--color-text-muted); font-style: italic; font-weight: 400; }
+    .history-location-row {
+      font-size: var(--text-xs);
+      color: var(--color-text-secondary);
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .history-maps-link {
+      color: var(--color-primary);
+      font-size: 10px;
+      font-weight: 600;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .history-maps-link:hover { text-decoration: underline; }
+
+    /* ── Subject dropdown in modal ─────────────────────────────────── */
+    .subject-dropdown-wrap { position: relative; }
+    .subject-select { appearance: none; -webkit-appearance: none; }
+    .subject-dropdown-arrow {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--color-text-muted);
+    }
+
     /* ── Bluetooth Widget (reuses .gps-card layout) ──────────────────── */
     .bt-icon { background: rgba(59,130,246,0.12); color: var(--color-info); }
     .bt-status-dot { width:10px; height:10px; border-radius:50%; background: var(--color-text-muted); flex-shrink:0; }
@@ -1767,8 +1873,74 @@
       <div class="modal-desc">Enter the lecture details below. Your photo will be captured automatically after you submit.</div>
 
       <div class="form-group">
-        <label class="form-label" for="ma-subject">Subject Name / Code</label>
-        <input class="form-input" type="text" id="ma-subject" placeholder="e.g. Data Structures (CS201)" autocomplete="off" />
+        <label class="form-label" for="ma-subject">Subject / Course Code</label>
+        <div class="subject-dropdown-wrap">
+          <select class="form-input subject-select" id="ma-subject" onchange="App.onSubjectChange(this)">
+            <option value="">— Select subject —</option>
+            <optgroup label="1st Year">
+              <option value="CS102" data-start="09:00" data-end="09:55">CS102</option>
+              <option value="CS104" data-start="10:00" data-end="10:55">CS104</option>
+            </optgroup>
+            <optgroup label="2nd Year (CS2xx)">
+              <option value="CS202" data-start="10:00" data-end="10:55">CS202</option>
+              <option value="CS204" data-start="09:00" data-end="09:55">CS204</option>
+              <option value="CS206" data-start="11:00" data-end="11:55">CS206</option>
+              <option value="CS208" data-start="10:00" data-end="10:55">CS208</option>
+              <option value="CS212" data-start="09:00" data-end="09:55">CS212</option>
+              <option value="CS252 (CSE Lab 1)" data-start="10:00" data-end="12:55">CS252 (CSE Lab 1)</option>
+              <option value="CS254" data-start="14:00" data-end="14:55">CS254</option>
+              <option value="CS256 (CSE Lab 1)" data-start="14:00" data-end="15:55">CS256 (CSE Lab 1)</option>
+              <option value="ME218" data-start="12:00" data-end="12:55">ME218</option>
+            </optgroup>
+            <optgroup label="3rd Year (CS3xx)">
+              <option value="CS302" data-start="14:00" data-end="14:55">CS302</option>
+              <option value="CS304" data-start="09:00" data-end="09:55">CS304</option>
+              <option value="CS312" data-start="09:00" data-end="09:55">CS312</option>
+              <option value="CS322" data-start="11:00" data-end="12:55">CS322</option>
+              <option value="CS352 (CSE Lab 1)" data-start="09:00" data-end="11:55">CS352 (CSE Lab 1)</option>
+              <option value="CS354 (CSE Lab 3)" data-start="10:00" data-end="12:55">CS354 (CSE Lab 3)</option>
+              <option value="CS382 (Minor Project)" data-start="15:00" data-end="15:55">CS382 (Minor Project)</option>
+            </optgroup>
+            <optgroup label="4th Year (CS4xx)">
+              <option value="CS402 (Project 2)" data-start="09:00" data-end="12:55">CS402 (Project 2)</option>
+              <option value="CS414 (NPTEL)" data-start="09:00" data-end="09:55">CS414 (NPTEL)</option>
+              <option value="CS418 (NPTEL)" data-start="09:00" data-end="09:55">CS418 (NPTEL)</option>
+            </optgroup>
+            <optgroup label="5th Year (CS5xx)">
+              <option value="CS502" data-start="10:00" data-end="10:55">CS502</option>
+              <option value="CS504" data-start="10:00" data-end="10:55">CS504</option>
+              <option value="CS506 (S&TRW)" data-start="11:00" data-end="12:55">CS506 (S&TRW)</option>
+              <option value="CS508 (Review Work)" data-start="15:00" data-end="15:55">CS508 (Review Work)</option>
+              <option value="CS510" data-start="11:00" data-end="11:55">CS510</option>
+              <option value="CS518" data-start="11:00" data-end="11:55">CS518</option>
+              <option value="CS556 (CSE Lab 3)" data-start="09:00" data-end="11:55">CS556 (CSE Lab 3)</option>
+              <option value="CS560 (CSE Lab 3)" data-start="15:00" data-end="17:55">CS560 (CSE Lab 3)</option>
+            </optgroup>
+            <optgroup label="6th Year (CS6xx)">
+              <option value="CS602 (Project 2)" data-start="09:00" data-end="12:55">CS602 (Project 2)</option>
+            </optgroup>
+            <optgroup label="CA Subjects">
+              <option value="CA402" data-start="16:00" data-end="16:55">CA402</option>
+              <option value="CA404" data-start="09:00" data-end="09:55">CA404</option>
+              <option value="CA406" data-start="10:00" data-end="10:55">CA406</option>
+              <option value="CA408" data-start="12:00" data-end="12:55">CA408</option>
+              <option value="CA452 (CSE Lab 3)" data-start="15:00" data-end="17:55">CA452 (CSE Lab 3)</option>
+              <option value="CA454 (CSE Lab 1)" data-start="14:00" data-end="15:55">CA454 (CSE Lab 1)</option>
+            </optgroup>
+            <optgroup label="HS Subjects">
+              <option value="HS394" data-start="15:00" data-end="15:55">HS394</option>
+              <option value="HS402" data-start="13:00" data-end="14:00">HS402</option>
+              <option value="HS492" data-start="12:00" data-end="12:55">HS492</option>
+              <option value="HS710" data-start="16:00" data-end="16:55">HS710</option>
+            </optgroup>
+            <optgroup label="Open Electives">
+              <option value="OE-I" data-start="14:00" data-end="14:55">OE-I</option>
+              <option value="OE-II" data-start="14:00" data-end="14:55">OE-II</option>
+            </optgroup>
+          </select>
+          <svg class="subject-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div style="font-size:10px; color:var(--color-text-muted); margin-top:4px;">Lecture time is auto-filled from the Spring 2026 routine. Adjust if needed.</div>
       </div>
 
       <div class="form-group">
@@ -2192,7 +2364,7 @@
         </div>
       </div>
 
-      <!-- GPS Widget -->
+      <!-- GPS Widget — place name + coordinates + altitude + Maps link -->
       <div class="gps-card">
         <div class="gps-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2200,11 +2372,17 @@
             <path d="M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9 2.12-2.12"/>
           </svg>
         </div>
-        <div class="gps-info">
+        <div class="gps-card-body">
           <div class="gps-label">Current Location (Fine GPS)</div>
-          <div class="gps-coords" id="gps-coords">Fetching location…</div>
-          <div class="gps-distance" id="gps-distance">—</div>
+          <div class="gps-place-name" id="gps-place-name">Locating…</div>
+          <div class="gps-latlng-row" id="gps-coords">—</div>
+          <div class="gps-altitude-row" id="gps-altitude" style="display:none;"></div>
+          <div class="gps-accuracy-row" id="gps-distance">—</div>
         </div>
+        <a class="gps-maps-btn" id="gps-maps-btn" href="#" target="_blank" rel="noopener" style="display:none;" aria-label="Open in Google Maps">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Maps
+        </a>
         <div class="gps-status-dot" id="gps-dot"></div>
       </div>
 
@@ -3581,31 +3759,89 @@
       isTracking = false;
     }
 
+    /** Cache for reverse geocode results keyed by "lat5,lng5" (5dp) */
+    const _geoCache = {};
+
+    /**
+     * Reverse-geocode lat/lng to a human-readable place name using the
+     * free Nominatim API (OpenStreetMap). Results are cached per session
+     * to avoid hammering the API on every GPS update.
+     * @param {number} lat
+     * @param {number} lng
+     * @returns {Promise<string>}
+     */
+    async function _reversGeocode(lat, lng) {
+      const key = `${lat.toFixed(3)},${lng.toFixed(3)}`; // Cache at 3dp (~111m grid)
+      if (_geoCache[key]) return _geoCache[key];
+
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=16`;
+        const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        if (!res.ok) throw new Error('Geocode failed');
+        const json = await res.json();
+
+        // Build a concise "Neighbourhood, City, State" label
+        const a = json.address || {};
+        const parts = [
+          a.suburb || a.neighbourhood || a.hamlet || a.village || a.residential,
+          a.city   || a.town          || a.county,
+          a.state,
+        ].filter(Boolean);
+        const label = parts.length ? parts.join(', ') : (json.display_name?.split(',').slice(0, 2).join(',').trim() || 'Unknown location');
+
+        _geoCache[key] = label;
+        return label;
+      } catch {
+        return 'Location name unavailable';
+      }
+    }
+
     /** Called on each new GPS fix */
     function onPositionUpdate(position) {
       lastPosition = position;
-      const { latitude, longitude, accuracy } = position.coords;
+      const { latitude, longitude, accuracy, altitude, altitudeAccuracy } = position.coords;
 
-      // Update GPS widget
+      // -- Coords line --
       document.getElementById('gps-coords').textContent =
-        `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        `${latitude.toFixed(5)}°N, ${longitude.toFixed(5)}°E`;
 
+      // -- Altitude --
+      const altEl = document.getElementById('gps-altitude');
+      if (altitude !== null && altitude !== undefined) {
+        const altStr = `Alt: ${Math.round(altitude)}m` +
+          (altitudeAccuracy != null ? ` ±${Math.round(altitudeAccuracy)}m` : '');
+        altEl.textContent = altStr;
+        altEl.style.display = '';
+      } else {
+        altEl.style.display = 'none';
+      }
+
+      // -- Accuracy / geofence distance --
       const dot = document.getElementById('gps-dot');
-
       if (CLASS_LOCATION) {
-        const distance = calculateDistance(
-          latitude, longitude,
-          CLASS_LOCATION.lat, CLASS_LOCATION.lng
-        );
-        const inZone = distance <= CLASS_LOCATION.radius;
+        const distance = calculateDistance(latitude, longitude, CLASS_LOCATION.lat, CLASS_LOCATION.lng);
+        const inZone   = distance <= CLASS_LOCATION.radius;
         document.getElementById('gps-distance').textContent =
-          `${Math.round(distance)}m from class · Accuracy ±${Math.round(accuracy)}m`;
+          `${Math.round(distance)}m from class · ±${Math.round(accuracy)}m accuracy`;
         dot.className = 'gps-status-dot ' + (inZone ? 'active' : 'error');
       } else {
         document.getElementById('gps-distance').textContent =
-          `Accuracy ±${Math.round(accuracy)}m · No geofence configured`;
+          `Accuracy ±${Math.round(accuracy)}m`;
         dot.className = 'gps-status-dot active';
       }
+
+      // -- Google Maps button --
+      const mapsBtn = document.getElementById('gps-maps-btn');
+      if (mapsBtn) {
+        mapsBtn.href = `https://maps.google.com/?q=${latitude},${longitude}`;
+        mapsBtn.style.display = '';
+      }
+
+      // -- Place name (async, non-blocking) --
+      _reversGeocode(latitude, longitude).then(name => {
+        const el = document.getElementById('gps-place-name');
+        if (el) el.textContent = name;
+      });
     }
 
     /** Called on GPS error */
@@ -3615,7 +3851,11 @@
         2: 'GPS signal unavailable. Move outdoors and retry.',
         3: 'GPS timed out. Please retry.',
       };
-      document.getElementById('gps-coords').textContent = messages[err.code] || 'GPS error';
+      const msg = messages[err.code] || 'GPS error';
+      const placeEl = document.getElementById('gps-place-name');
+      const coordEl = document.getElementById('gps-coords');
+      if (placeEl) placeEl.textContent = msg;
+      if (coordEl) coordEl.textContent = '';
       document.getElementById('gps-dot').className = 'gps-status-dot error';
     }
 
@@ -3648,27 +3888,26 @@
      */
     function getCurrentValidation() {
       if (!lastPosition) return null;
-      const { latitude, longitude } = lastPosition.coords;
+      const { latitude, longitude, accuracy, altitude } = lastPosition.coords;
       if (!CLASS_LOCATION) {
         return {
           isValid: true,
           distance: null,
           latitude,
           longitude,
-          accuracy: Math.round(lastPosition.coords.accuracy),
+          altitude: altitude ?? null,
+          accuracy: Math.round(accuracy),
           classLocation: { name: 'Current GPS location', radius: null },
         };
       }
-      const distance = calculateDistance(
-        latitude, longitude,
-        CLASS_LOCATION.lat, CLASS_LOCATION.lng
-      );
+      const distance = calculateDistance(latitude, longitude, CLASS_LOCATION.lat, CLASS_LOCATION.lng);
       return {
         isValid:   distance <= CLASS_LOCATION.radius,
         distance:  Math.round(distance),
         latitude,
         longitude,
-        accuracy:  Math.round(lastPosition.coords.accuracy),
+        altitude: altitude ?? null,
+        accuracy:  Math.round(accuracy),
         classLocation: CLASS_LOCATION,
       };
     }
@@ -3676,7 +3915,14 @@
     /** Get the raw last position */
     function getLastPosition() { return lastPosition; }
 
-    return { startTracking, stopTracking, getCurrentValidation, getLastPosition, setGeofence, getGeofence };
+    /** Get the human-readable place name for the current position (async) */
+    async function getPlaceName() {
+      if (!lastPosition) return null;
+      const { latitude, longitude } = lastPosition.coords;
+      return _reversGeocode(latitude, longitude);
+    }
+
+    return { startTracking, stopTracking, getCurrentValidation, getLastPosition, setGeofence, getGeofence, getPlaceName };
   })();
 
 
@@ -3894,6 +4140,19 @@
     }
 
     /**
+     * Auto-fill lecture time when a subject is selected from the dropdown.
+     * Time data is stored in data-start / data-end attributes on the <option>.
+     * @param {HTMLSelectElement} sel
+     */
+    function onSubjectChange(sel) {
+      const opt   = sel.options[sel.selectedIndex];
+      const start = opt?.dataset?.start || '';
+      const end   = opt?.dataset?.end   || '';
+      if (start) document.getElementById('ma-time-start').value = start;
+      if (end)   document.getElementById('ma-time-end').value   = end;
+    }
+
+    /**
      * Core action: Mark Attendance.
      * Reads the subject/date/lecture-time form, validates GPS, captures the
      * student's face photo, then stores the full attendance record (student
@@ -3903,7 +4162,7 @@
     async function submitMarkAttendance() {
       const btn        = document.getElementById('btn-ma-submit');
       const errorEl     = document.getElementById('ma-error');
-      const subject     = document.getElementById('ma-subject').value.trim();
+      const subject     = document.getElementById('ma-subject').value;
       const date        = document.getElementById('ma-date').value;
       const timeStart   = document.getElementById('ma-time-start').value;
       const timeEnd     = document.getElementById('ma-time-end').value;
@@ -3932,6 +4191,10 @@
           errorEl.style.display = '';
           return;
         }
+
+        // Step 1b: Fetch place name async (for record storage and history display)
+        UI.setButtonLoading(btn, true, 'Getting location…');
+        const placeName = await GPS.getPlaceName().catch(() => null);
 
         // Step 2: Bluetooth proximity (best-effort, additive signal)
         const btState = BT.getStatus();
@@ -3975,6 +4238,8 @@
           // Location & proximity signals
           latitude:    geo.latitude,
           longitude:   geo.longitude,
+          altitude:    geo.altitude,
+          placeName:   placeName || '',
           accuracy:    geo.accuracy,
           distance:    geo.distance,
           bluetoothVerified: btState.connected,
@@ -4063,6 +4328,9 @@
         const inheritedLectureStart = checkInRecord?.lectureStart || '';
         const inheritedLectureEnd   = checkInRecord?.lectureEnd   || '';
 
+        // Fetch place name for checkout record
+        const placeName = await GPS.getPlaceName().catch(() => null);
+
         const record = {
           id:          `${user.userId}_checkout_${now.getTime()}`,
           studentName: user.name       || '',
@@ -4083,6 +4351,8 @@
           photoDataUrl: '',          // No photo required at checkout
           latitude:    geo.latitude,
           longitude:   geo.longitude,
+          altitude:    geo.altitude,
+          placeName:   placeName || checkInRecord?.placeName || '',
           accuracy:    geo.accuracy,
           distance:    geo.distance ?? null,
           bluetoothVerified: btState.connected,
@@ -4393,6 +4663,7 @@
     return {
       init,
       openMarkAttendanceModal,
+      onSubjectChange,
       submitMarkAttendance,
       markCheckout,
       loadAttendanceData,
@@ -4414,79 +4685,106 @@
    * ====================================================================
    */
   const History = (() => {
-    let allRecords = []; // Full unfiltered list
+    let allRecords = [];
 
     /**
-     * Render the history list from an array of attendance records.
-     * @param {Array} records
+     * Render history — groups check-in records (shown as cards) and finds
+     * their matching check-out so both times appear on the same row.
      */
     function render(records) {
-      allRecords = records.filter(r => r.type === 'checkin'); // Only show check-ins
+      allRecords = records;
       const filterDate = document.getElementById('history-filter-date').value;
-      const filtered   = filterDate
-        ? allRecords.filter(r => r.date === filterDate)
-        : allRecords;
 
-      _renderList(filtered);
+      // Separate checkins and checkouts
+      const checkins  = records.filter(r => r.type === 'checkin');
+      const checkouts = records.filter(r => r.type === 'checkout');
+
+      const filtered = filterDate
+        ? checkins.filter(r => r.date === filterDate)
+        : checkins;
+
+      _renderList(filtered, checkouts);
     }
 
-    /**
-     * Render filtered records into the #history-list container.
-     * @param {Array} records
-     */
-    function _renderList(records) {
-      const container = document.getElementById('history-list');
+    function _renderList(checkins, checkouts) {
+      const container  = document.getElementById('history-list');
       const emptyState = document.getElementById('history-empty');
       const countBadge = document.getElementById('history-count');
 
-      countBadge.textContent = `${records.length} record${records.length !== 1 ? 's' : ''}`;
+      countBadge.textContent = `${checkins.length} record${checkins.length !== 1 ? 's' : ''}`;
 
-      // Remove old items (keep the empty state element)
-      const existing = container.querySelectorAll('.history-item');
-      existing.forEach(el => el.remove());
+      container.querySelectorAll('.history-item').forEach(el => el.remove());
 
-      if (records.length === 0) {
-        emptyState.style.display = '';
-        return;
-      }
-
+      if (checkins.length === 0) { emptyState.style.display = ''; return; }
       emptyState.style.display = 'none';
 
-      // Sort by date descending
-      const sorted = [...records].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const sorted = [...checkins].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
       sorted.forEach(record => {
-        const item = _createHistoryItem(record);
-        container.appendChild(item);
+        // Find the matching checkout: same user, same date, same subject (if any), type=checkout
+        const matchedOut = checkouts
+          .filter(c =>
+            c.userId === record.userId &&
+            c.date   === record.date &&
+            (!record.subject || !c.subject || c.subject === record.subject) &&
+            new Date(c.timestamp) >= new Date(record.timestamp)
+          )
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))[0] || null;
+
+        container.appendChild(_createHistoryItem(record, matchedOut));
       });
     }
 
-    /**
-     * Create a history list item DOM element.
-     * @param {object} record
-     * @returns {HTMLElement}
-     */
-    function _createHistoryItem(record) {
-      const status   = record.status || 'queued';
-      const date     = new Date(record.timestamp);
-      const dateStr  = date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-      const timeStr  = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    function _createHistoryItem(checkin, checkout) {
+      const status = checkin.status || 'queued';
+      const date   = new Date(checkin.timestamp);
+      const dateStr = date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+
+      const inTimeStr  = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const outTimeStr = checkout
+        ? new Date(checkout.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        : null;
 
       const statusLabels = { present: 'Present', absent: 'Absent', partial: 'Partial', queued: 'Queued' };
       const badgeClasses = { present: 'badge-success', absent: 'badge-danger', partial: 'badge-warning', queued: 'badge-muted' };
 
+      // Location — prefer stored place name, fall back to coords
+      const placeName = checkin.placeName ||
+        (checkin.latitude ? `${Number(checkin.latitude).toFixed(4)}°N, ${Number(checkin.longitude).toFixed(4)}°E` : 'Location N/A');
+      const mapsUrl   = checkin.latitude
+        ? `https://maps.google.com/?q=${checkin.latitude},${checkin.longitude}`
+        : null;
+
+      const lectureTime = (checkin.lectureStart && checkin.lectureEnd)
+        ? `${checkin.lectureStart}–${checkin.lectureEnd}` : '';
+      const subjectLine = checkin.subject
+        ? `${checkin.subject}${lectureTime ? ' · ' + lectureTime : ''}` : '';
+      const thumb = checkin.photoDataUrl
+        ? `<img class="history-thumb" src="${checkin.photoDataUrl}" alt="Captured face" />` : '';
+
       const item = document.createElement('div');
       item.className = 'history-item';
-      const lectureTime = (record.lectureStart && record.lectureEnd) ? `${record.lectureStart}–${record.lectureEnd}` : '';
-      const subjectLine = record.subject ? `${record.subject}${lectureTime ? ' · ' + lectureTime : ''}` : null;
-      const thumb = record.photoDataUrl ? `<img class="history-thumb" src="${record.photoDataUrl}" alt="Captured face" />` : '';
       item.innerHTML = `
         ${thumb}
         <div class="history-status-bar ${status}"></div>
-        <div class="history-info">
+        <div class="history-info" style="flex:1; min-width:0;">
           <div class="history-date font-display">${dateStr}</div>
-          ${subjectLine ? `<div class="history-times">${subjectLine}</div>` : ''}
-          <div class="history-times">In: ${timeStr} · ${record.distance != null ? `${record.distance}m from class` : 'Location N/A'}</div>
+          ${subjectLine ? `<div class="history-times" style="margin-top:2px;">${subjectLine}</div>` : ''}
+          <div class="history-times-row">
+            <div class="history-time-block">
+              <div class="history-time-label">Check In</div>
+              <div class="history-time-value">${inTimeStr}</div>
+            </div>
+            <div class="history-time-block">
+              <div class="history-time-label">Check Out</div>
+              <div class="history-time-value ${outTimeStr ? '' : 'no-checkout'}">${outTimeStr || 'Not yet'}</div>
+            </div>
+          </div>
+          <div class="history-location-row">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${placeName}</span>
+            ${mapsUrl ? `<a class="history-maps-link" href="${mapsUrl}" target="_blank" rel="noopener">Map ↗</a>` : ''}
+          </div>
         </div>
         <div class="history-meta">
           <span class="badge ${badgeClasses[status] || 'badge-muted'}">${statusLabels[status] || status}</span>
@@ -4495,64 +4793,48 @@
       return item;
     }
 
-    /**
-     * Filter history by date from the date input.
-     * Called on date input change.
-     */
-    function filter() {
-      render(allRecords);
-    }
+    function filter() { render(allRecords); }
 
-    /**
-     * Export the current history records as a CSV file.
-     * Creates a Blob and triggers a download.
-     */
     function exportCSV() {
       const filterDate = document.getElementById('history-filter-date').value;
-      const records    = filterDate
-        ? allRecords.filter(r => r.date === filterDate)
-        : allRecords;
+      const checkins  = allRecords.filter(r => r.type === 'checkin');
+      const checkouts = allRecords.filter(r => r.type === 'checkout');
+      const records   = filterDate ? checkins.filter(r => r.date === filterDate) : checkins;
 
-      if (records.length === 0) {
-        Toast.show('No records to export.', 'warning');
-        return;
-      }
+      if (records.length === 0) { Toast.show('No records to export.', 'warning'); return; }
 
-      // CSV header
-      const headers = ['Date', 'Time', 'Type', 'Status', 'Latitude', 'Longitude', 'Distance (m)'];
-
-      // Build rows
+      const headers = [
+        'Date', 'Subject', 'Lecture Time', 'Check-In', 'Check-Out',
+        'Status', 'Place Name', 'Latitude', 'Longitude', 'Altitude (m)',
+        'Accuracy (m)', 'Distance (m)', 'Bluetooth'
+      ];
       const rows = records.map(r => {
-        const d = new Date(r.timestamp);
+        const inTime = new Date(r.timestamp).toLocaleTimeString('en-IN');
+        const matchedOut = checkouts.find(c =>
+          c.userId === r.userId && c.date === r.date &&
+          new Date(c.timestamp) >= new Date(r.timestamp)
+        );
+        const outTime = matchedOut ? new Date(matchedOut.timestamp).toLocaleTimeString('en-IN') : '';
         return [
-          r.date,
-          d.toLocaleTimeString('en-IN'),
-          r.type || 'checkin',
-          r.status || 'queued',
-          r.latitude?.toFixed(6) || '',
-          r.longitude?.toFixed(6) || '',
-          r.distance ?? '',
+          r.date, r.subject || '', r.lectureStart && r.lectureEnd ? `${r.lectureStart}–${r.lectureEnd}` : '',
+          inTime, outTime,
+          r.status || '', r.placeName || '',
+          r.latitude || '', r.longitude || '', r.altitude ?? '',
+          r.accuracy || '', r.distance ?? '',
+          r.bluetoothVerified ? 'Yes' : 'No'
         ];
       });
 
-      // Combine into CSV string
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
-      ].join('\n');
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
 
-      // Trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url  = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href     = url;
-      link.download = `AttendGB_History_${filterDate || 'all'}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      Toast.show('CSV downloaded', 'success');
+      const a    = document.createElement('a');
+      a.href = url; a.download = `attendgb_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+      Toast.show('CSV exported!', 'success');
     }
 
     return { render, filter, exportCSV };
