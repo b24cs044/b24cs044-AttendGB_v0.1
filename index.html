@@ -18,7 +18,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="AttendX" />
   <meta name="theme-color" content="#0A1628" />
+  
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png" />
+  <link rel="shortcut icon" href="favicon.ico" />
+
   <link rel="manifest" href="manifest.json" />
 
   <title>AttendX — Smart Attendance</title>
@@ -2412,7 +2419,7 @@
       <!-- PWA Install Prompt -->
       <div id="install-prompt">
         <div class="install-text">
-          <div class="install-text-title">Install AttendGB</div>
+          <div class="install-text-title">Install AttendX</div>
           <div class="install-text-sub">Add to home screen for offline access</div>
         </div>
         <button class="btn-install" id="btn-install-app" onclick="App.installPWA()">Install</button>
@@ -3095,6 +3102,7 @@
      * Initialise auth state from localStorage on app load.
      * If a remembered session exists, restore it silently.
      */
+    
     async function init() {
       try {
         const raw = localStorage.getItem('attendx_session') || sessionStorage.getItem('attendx_session');
@@ -4108,6 +4116,10 @@
      * Called once on page load after the DOM is ready.
      */
     async function init() {
+
+      // ── Ensure a Device GUID exists on this device from first launch ──
+      _ensureDeviceGUID();
+
       // Open IndexedDB first (creates stores if needed)
       await DB.open();
 
