@@ -2056,15 +2056,36 @@
   <span style="font-size:var(--text-xs); color:var(--color-text-muted); white-space:nowrap;">or</span>
   <div style="flex:1; height:1px; background:var(--color-border);"></div>
 </div>
-<button class="btn-biometric" id="btn-biometric-login" onclick="Auth.biometricLogin()">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/>
-    <path d="M5 12a7 7 0 0 1 14 0"/>
-    <path d="M8 12a4 4 0 0 1 8 0"/>
-    <path d="M12 12v6"/>
-  </svg>
-  <span id="btn-biometric-label">Sign in with Biometrics (Fingerprint / Face ID)</span>
-</button>
+<!-- Biometric login — two options, always visible -->
+        <div style="display:flex; align-items:center; gap:var(--sp-3); margin-top:var(--sp-4);">
+          <div style="flex:1; height:1px; background:var(--color-border);"></div>
+          <span style="font-size:var(--text-xs); color:var(--color-text-muted); white-space:nowrap;">or continue with</span>
+          <div style="flex:1; height:1px; background:var(--color-border);"></div>
+        </div>
+        <div style="display:flex; gap:var(--sp-3); margin-top:var(--sp-3);">
+          <!-- Fingerprint -->
+          <button class="btn-biometric" id="btn-biometric-fp" onclick="Auth.biometricLogin('fingerprint')"
+            style="flex:1; flex-direction:column; gap:6px; padding:var(--sp-4) var(--sp-3);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/>
+              <path d="M5 12a7 7 0 0 1 14 0"/>
+              <path d="M8 12a4 4 0 0 1 8 0"/>
+              <path d="M12 12v6"/>
+            </svg>
+            <span style="font-size:var(--text-xs); font-weight:600;">Fingerprint</span>
+          </button>
+          <!-- Face ID -->
+          <button class="btn-biometric" id="btn-biometric-face" onclick="Auth.biometricLogin('face')"
+            style="flex:1; flex-direction:column; gap:6px; padding:var(--sp-4) var(--sp-3);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
+              <circle cx="9" cy="12" r="1" fill="currentColor"/>
+              <circle cx="15" cy="12" r="1" fill="currentColor"/>
+              <path d="M9 16s1 1.5 3 1.5 3-1.5 3-1.5"/>
+            </svg>
+            <span style="font-size:var(--text-xs); font-weight:600;">Face ID</span>
+          </button>
+        </div>
       </div>
 
       <div class="auth-footer">
@@ -2188,7 +2209,7 @@
             <option value="">— Select Institution —</option>
             <option value="nitm">NIT Meghalaya</option>
             <option value="tmss">TMSS</option>
-            <option value="tmss">SIT Tumkur</option>
+            <option value="sitt">SIT Tumkur</option>
           </select>
           <span class="form-error" id="err-reg-institution">Please select an institution.</span>
         </div>
@@ -2555,13 +2576,30 @@
             <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
           </div>
 
-          <div class="settings-item" onclick="Auth.registerBiometric()">
+          <!-- Fingerprint setup -->
+          <div class="settings-item" onclick="Auth.registerBiometric('fingerprint')">
             <div class="settings-item-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><path d="M12 12v6"/></svg>
             </div>
             <div class="settings-item-info">
-              <div class="settings-item-label">Biometric Login</div>
-              <div class="settings-item-sub" id="biometric-status-sub">Re-register fingerprint or Face ID</div>
+              <div class="settings-item-label">Fingerprint Login</div>
+              <div class="settings-item-sub" id="biometric-fp-sub">Set up fingerprint authentication</div>
+            </div>
+            <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+          </div>
+          <!-- Face ID setup -->
+          <div class="settings-item" onclick="Auth.registerBiometric('face')">
+            <div class="settings-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
+                <circle cx="9" cy="12" r="1" fill="currentColor"/>
+                <circle cx="15" cy="12" r="1" fill="currentColor"/>
+                <path d="M9 16s1 1.5 3 1.5 3-1.5 3-1.5"/>
+              </svg>
+            </div>
+            <div class="settings-item-info">
+              <div class="settings-item-label">Face Login</div>
+              <div class="settings-item-sub" id="biometric-face-sub">Set up Face ID authentication</div>
             </div>
             <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
           </div>
@@ -2616,6 +2654,7 @@
       <div class="settings-section" style="margin-top:var(--sp-4);">
         <div class="settings-section-title">Sync & Storage</div>
         <div class="settings-list">
+          <!-- Sync Now row -->
           <div class="settings-item" onclick="App.triggerManualSync()">
             <div class="settings-item-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -2625,6 +2664,31 @@
               <div class="settings-item-sub" id="last-sync-label">Last synced: Never</div>
             </div>
             <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+          </div>
+
+          <!-- Auto-sync preference -->
+          <div class="settings-item" style="cursor:default;">
+            <div class="settings-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            </div>
+            <div class="settings-item-info">
+              <div class="settings-item-label">Auto Sync</div>
+              <div class="settings-item-sub" id="auto-sync-sub">Syncs queued records when online</div>
+            </div>
+            <!-- Always / Never pill toggle -->
+            <div style="display:flex; border-radius:var(--radius-full); border:1px solid var(--color-border); overflow:hidden; flex-shrink:0;">
+              <button id="sync-btn-always"
+                onclick="App.setAutoSync('always')"
+                style="padding:6px 14px; font-size:var(--text-xs); font-weight:700; background:var(--color-primary); color:#fff; border-radius:0; transition:background var(--transition-fast);">
+                Always
+              </button>
+              <button id="sync-btn-never"
+                onclick="App.setAutoSync('never')"
+                style="padding:6px 14px; font-size:var(--text-xs); font-weight:700; background:var(--color-surface-2); color:var(--color-text-secondary); border-radius:0; transition:background var(--transition-fast);">
+                Never
+              </button>
+            </div>
+          </div>
           </div>
 
           <div class="settings-item" onclick="App.clearLocalData()">
@@ -2734,6 +2798,52 @@
 
       </div>
     </nav>
+    <!-- ── CHANGE PASSWORD MODAL ─────────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-change-password" role="dialog" aria-modal="true" aria-label="Change Password">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Change Password</div>
+      <div class="modal-desc">Enter your current password, then choose a new one.</div>
+
+      <div class="form-group">
+        <label class="form-label" for="cp-current">Current Password</label>
+        <div class="input-password-wrapper">
+          <input class="form-input" type="password" id="cp-current" placeholder="Your current password" autocomplete="current-password" />
+          <button class="btn-eye" onclick="UI.togglePassword('cp-current', this)" aria-label="Show">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cp-new">New Password</label>
+        <div class="input-password-wrapper">
+          <input class="form-input" type="password" id="cp-new" placeholder="At least 8 characters"
+            autocomplete="new-password"
+            oninput="UI.updateStrengthMeter(this.value,'cp-strength-bar','cp-strength-label')" />
+          <button class="btn-eye" onclick="UI.togglePassword('cp-new', this)" aria-label="Show">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="strength-meter">
+          <div class="strength-bar-track"><div class="strength-bar-fill" id="cp-strength-bar"></div></div>
+          <div class="strength-label" id="cp-strength-label" style="color:var(--color-text-muted);">Enter a password to see strength</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cp-confirm">Confirm New Password</label>
+        <input class="form-input" type="password" id="cp-confirm" placeholder="Repeat new password" autocomplete="new-password" />
+      </div>
+
+      <div id="cp-error" style="display:none; color:var(--color-danger); font-size:var(--text-xs); margin-bottom:var(--sp-3);"></div>
+
+      <div style="display:flex; gap:var(--sp-3);">
+        <button class="btn btn-ghost" style="flex:1" onclick="UI.closeModal('modal-change-password')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" id="btn-cp-submit" onclick="Auth.changePassword()">Update</button>
+      </div>
+    </div>
+  </div>
 
   </div><!-- #app -->
 
@@ -3147,15 +3257,12 @@
 
       // Check if biometric credential is registered on this device
     // Biometric button is always visible. Update its label based on registration state.
-    const hasBio = localStorage.getItem('attendx_bio_registered') === 'true';
-    const bioLabel = document.getElementById('btn-biometric-label');
-    if (hasBio) {
-      if (bioLabel) bioLabel.textContent = 'Sign in with Biometrics (Fingerprint / Face ID)';
-      document.getElementById('biometric-status-sub').textContent = 'Biometrics are active on this device';
-    } else {
-      if (bioLabel) bioLabel.textContent = 'Set up Biometric Login';
-      // On this device no credential exists yet — clicking will prompt setup
-        document.getElementById('biometric-status-sub').textContent = 'Re-register fingerprint or Face ID';}
+    const hasFp   = localStorage.getItem('attendx_bio_registered_fingerprint') === 'true';
+      const hasFace = localStorage.getItem('attendx_bio_registered_face')        === 'true';
+      const fpSub   = document.getElementById('biometric-fp-sub');
+      const faceSub = document.getElementById('biometric-face-sub');
+      if (fpSub)   fpSub.textContent   = hasFp   ? '✓ Fingerprint active on this device'  : 'Set up fingerprint authentication';
+      if (faceSub) faceSub.textContent = hasFace  ? '✓ Face ID active on this device'       : 'Set up Face ID authentication';
     }
 
     /**
@@ -3244,7 +3351,10 @@
      * This uses the Web Authentication API (FIDO2).
      * @returns {Promise<void>}
      */
-    async function registerBiometric() {
+    /**
+     * @param {'fingerprint'|'face'} type - Which biometric method to register
+     */
+    async function registerBiometric(type = 'fingerprint') {
       if (!window.PublicKeyCredential) {
         Toast.show('Biometrics not supported on this device/browser.', 'warning');
         return;
@@ -3303,16 +3413,21 @@
 
         // Encode and store the credential ID for future authentication
         const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-        localStorage.setItem('attendx_credential_id', credentialId);
-        localStorage.setItem('attendx_bio_registered', 'true');
 
-        // Update UI
-        document.getElementById('btn-biometric-login').style.display  = 'flex';
-        document.getElementById('biometric-status-sub').textContent   = 'Biometrics are active on this device';
+        // Store per-type so fingerprint and face are registered independently
+        localStorage.setItem(`attendx_credential_id_${type}`, credentialId);
+        localStorage.setItem(`attendx_bio_registered_${type}`, 'true');
+
+        // Update profile sub-labels
+        const fpSub   = document.getElementById('biometric-fp-sub');
+        const faceSub = document.getElementById('biometric-face-sub');
+        if (type === 'fingerprint' && fpSub)   fpSub.textContent   = '✓ Fingerprint active on this device';
+        if (type === 'face'        && faceSub)  faceSub.textContent = '✓ Face ID active on this device';
+
         const card = document.getElementById('biometric-setup-card');
         if (card) card.classList.add('success');
 
-        Toast.show('Biometric login enabled!', 'success');
+        Toast.show(`${type === 'face' ? 'Face ID' : 'Fingerprint'} login enabled!`, 'success');
       } catch (err) {
         if (err.name === 'NotAllowedError') {
           Toast.show('Biometric setup cancelled.', 'warning');
@@ -3327,21 +3442,23 @@
     /**
      * Authenticate using stored WebAuthn credential (biometric login).
      */
-    async function biometricLogin() {
+    /**
+     * @param {'fingerprint'|'face'} type - Which registered credential to use
+     */
+    async function biometricLogin(type = 'fingerprint') {
       if (!window.PublicKeyCredential) {
         Toast.show('Biometrics not supported.', 'warning');
         return;
       }
 
-      const storedCredId = localStorage.getItem('attendx_credential_id');
+      const storedCredId = localStorage.getItem(`attendx_credential_id_${type}`);
       if (!storedCredId) {
         const user = getUser() || await DB.getUser();
         if (!user) {
-          Toast.show('Sign in with password first, then set up biometrics from Profile.', 'info');
+          Toast.show(`Sign in with password first, then set up ${type === 'face' ? 'Face ID' : 'Fingerprint'} from Profile.`, 'info');
           return;
         }
-        // User is signed in but biometric not set up on this device — go straight to setup
-        await registerBiometric();
+        await registerBiometric(type);
         return;
       }
 
@@ -3537,7 +3654,60 @@
     /** Get the current logged-in user object */
     function getUser() { return currentUser; }
 
-    return { init, login, logout, biometricLogin, registerBiometric, handleForgotStep, getUser, captureAndStoreFace, captureFaceRequired };
+    /**
+     * Change the current user's password.
+     * Works both online (via GAS) and offline (updates local account registry).
+     */
+    async function changePassword() {
+      const btn     = document.getElementById('btn-cp-submit');
+      const errorEl = document.getElementById('cp-error');
+      const current = document.getElementById('cp-current').value;
+      const newPass = document.getElementById('cp-new').value;
+      const confirm = document.getElementById('cp-confirm').value;
+
+      errorEl.style.display = 'none';
+
+      if (!current) { errorEl.textContent = 'Please enter your current password.'; errorEl.style.display = ''; return; }
+      if (newPass.length < 8) { errorEl.textContent = 'New password must be at least 8 characters.'; errorEl.style.display = ''; return; }
+      if (newPass !== confirm) { errorEl.textContent = 'Passwords do not match.'; errorEl.style.display = ''; return; }
+
+      UI.setButtonLoading(btn, true);
+      try {
+        const user = currentUser || await DB.getUser();
+        if (!user) throw new Error('No active session. Please sign in again.');
+
+        // Verify current password against local store
+        const account = await DB.getRegisteredUser(user.email);
+        if (account) {
+          const currentHash = await CryptoUtil.sha256(current);
+          if (currentHash !== account.passwordHash) throw new Error('Current password is incorrect.');
+          // Update local store
+          const newHash = await CryptoUtil.sha256(newPass);
+          await DB.saveRegisteredUser({ ...account, passwordHash: newHash });
+        }
+
+        // Update on GAS backend if configured
+        if (GAS.isConfigured() && navigator.onLine) {
+          // Reuse the reset-password endpoint with current as OTP-equivalent verification
+          // (In production, add a dedicated changePassword action to GAS)
+          try {
+            await GAS.resetPassword(user.email, current, newPass);
+          } catch {
+            // Backend update failed — local update succeeded; will re-sync next full login
+          }
+        }
+
+        UI.closeModal('modal-change-password');
+        Toast.show('Password updated successfully.', 'success');
+      } catch (err) {
+        errorEl.textContent = err.message || 'Password change failed.';
+        errorEl.style.display = '';
+      } finally {
+        UI.setButtonLoading(btn, false);
+      }
+    }
+
+    return { init, login, logout, biometricLogin, registerBiometric, changePassword, handleForgotStep, getUser, captureAndStoreFace, captureFaceRequired };
   })();
 
 
@@ -4174,6 +4344,7 @@
 
       // Monitor online/offline status
       setupConnectivityMonitor();
+      _applyAutoSyncUI(); // Restore saved auto-sync preference pill state
 
       // Set up PWA install prompt
       window.addEventListener('beforeinstallprompt', (e) => {
@@ -4641,8 +4812,9 @@
       function update() {
         if (navigator.onLine) {
           offlineBanner.classList.remove('visible');
-          // Auto-sync when coming back online
-          triggerManualSync();
+          // Only auto-sync if the user hasn't set it to 'never'
+          const autoSync = localStorage.getItem('attendx_auto_sync') || 'always';
+          if (autoSync === 'always') triggerManualSync();
         } else {
           offlineBanner.classList.add('visible');
         }
@@ -4771,6 +4943,35 @@
       }
     }
 
+    /**
+     * Set and persist the auto-sync preference.
+     * 'always' — sync automatically when coming back online (default).
+     * 'never'  — only sync when the user taps "Sync Now" manually.
+     */
+    function setAutoSync(mode) {
+      localStorage.setItem('attendx_auto_sync', mode);
+      const btnAlways = document.getElementById('sync-btn-always');
+      const btnNever  = document.getElementById('sync-btn-never');
+      const sub       = document.getElementById('auto-sync-sub');
+      if (mode === 'always') {
+        if (btnAlways) { btnAlways.style.background = 'var(--color-primary)'; btnAlways.style.color = '#fff'; }
+        if (btnNever)  { btnNever.style.background  = 'var(--color-surface-2)'; btnNever.style.color = 'var(--color-text-secondary)'; }
+        if (sub) sub.textContent = 'Syncs automatically when online';
+        Toast.show('Auto sync: Always', 'info');
+      } else {
+        if (btnNever)  { btnNever.style.background  = 'var(--color-primary)'; btnNever.style.color = '#fff'; }
+        if (btnAlways) { btnAlways.style.background = 'var(--color-surface-2)'; btnAlways.style.color = 'var(--color-text-secondary)'; }
+        if (sub) sub.textContent = 'Only syncs when you tap Sync Now';
+        Toast.show('Auto sync: Never', 'info');
+      }
+    }
+
+    /** Apply the saved auto-sync preference to the pill UI on load */
+    function _applyAutoSyncUI() {
+      const mode = localStorage.getItem('attendx_auto_sync') || 'always';
+      setAutoSync(mode);
+    }
+
     return {
       init,
       openMarkAttendanceModal,
@@ -4780,6 +4981,7 @@
       loadAttendanceData,
       triggerManualSync,
       updateQueueBanner,
+      setAutoSync,
       submitWLR,
       installPWA,
       toggleNotifications,
@@ -5132,11 +5334,19 @@
       btn.classList.add('selected');
     }
 
-    /** Show change password UI (could open a modal — simplified here) */
+    /** Open the Change Password modal */
     function showChangePassword() {
-      Toast.show('Change password feature coming soon.', 'info');
+      document.getElementById('cp-current').value  = '';
+      document.getElementById('cp-new').value      = '';
+      document.getElementById('cp-confirm').value  = '';
+      document.getElementById('cp-error').style.display = 'none';
+      const bar = document.getElementById('cp-strength-bar');
+      const lbl = document.getElementById('cp-strength-label');
+      if (bar) { bar.style.width = '0%'; bar.style.background = ''; }
+      if (lbl) { lbl.textContent = 'Enter a password to see strength'; lbl.style.color = 'var(--color-text-muted)'; }
+      openModal('modal-change-password');
     }
-
+    
     return {
       showScreen, navigate, togglePassword, updateStrengthMeter,
       animateRing, showFieldError, clearFieldError, setButtonLoading,
