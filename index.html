@@ -2984,7 +2984,7 @@
      * IMPORTANT: Replace this with the actual deployment URL before going live.
      * Format: https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
      */
-    const GAS_URL = window.ATTEND_GB_CONFIG?.gasUrl || '';
+    const GAS_URL = window.ATTEND_X_CONFIG?.gasUrl || '';
 
     /**
      * Sends a POST request to the GAS backend with a JSON payload.
@@ -2995,7 +2995,7 @@
      */
     async function post(payload) {
       if (!GAS_URL) {
-        throw new Error('GAS backend not configured. Add your deployment URL to window.ATTEND_GB_CONFIG.gasUrl');
+        throw new Error('GAS backend not configured. Add your deployment URL to window.ATTEND_X_CONFIG.gasUrl');
       }
 
       /*
@@ -4115,7 +4115,33 @@
      * Main app initialisation.
      * Called once on page load after the DOM is ready.
      */
-    async function init() {
+    /**
+ * Guarantee that a Device GUID exists in localStorage for this device.
+ * Called once on every app launch — safe to call multiple times.
+ *
+ * Why here and not only in Register.submit():
+ *   Registration may happen on a different device, or localStorage may be
+ *   cleared after registration, leaving attendance records with no GUID.
+ *   Generating it on first launch (and preserving it across sessions) means
+ *   every device always has a stable identifier regardless of how the user
+ *   signed in.
+ */
+      function _ensureDeviceGUID() {
+        const KEY = 'attendx_device_guid';
+        if (!localStorage.getItem(KEY)) {
+          const guid = (crypto.randomUUID
+            ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+              })
+          );
+          localStorage.setItem(KEY, guid);
+          console.info('[App] Device GUID created:', guid);
+        }
+      }
+
+      async function init() {
 
       // ── Ensure a Device GUID exists on this device from first launch ──
       _ensureDeviceGUID();
