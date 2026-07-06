@@ -1287,6 +1287,46 @@
     .bt-connect-btn:hover { background: rgba(79,70,229,0.3); }
     .bt-connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* ── Bluetooth Pair Wizard (modal-bt-pair) ───────────────────────── */
+    .bt-pair-steps-nav {
+      display: flex; align-items: center; gap: 6px; margin-bottom: var(--sp-5);
+    }
+    .bt-pair-steps-nav .dot {
+      flex: 1; height: 4px; border-radius: var(--radius-full);
+      background: var(--color-border); transition: background var(--transition-fast);
+    }
+    .bt-pair-steps-nav .dot.done   { background: var(--color-success); }
+    .bt-pair-steps-nav .dot.active { background: var(--color-primary); }
+
+    .bt-pair-step { display: none; }
+    .bt-pair-step.active { display: block; }
+
+    .bt-pair-scan-box {
+      display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-5); border: 1.5px dashed var(--color-border);
+      border-radius: var(--radius-md); background: var(--color-surface-2);
+      text-align: center; margin-bottom: var(--sp-4);
+    }
+    .bt-pair-device-name { font-weight: 700; font-size: var(--text-md); }
+    .bt-pair-device-sub  { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    .bt-pair-face-box {
+      display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-5); border-radius: var(--radius-md);
+      background: var(--color-surface-2); text-align: center; margin-bottom: var(--sp-4);
+    }
+    .bt-pair-face-status { font-size: var(--text-sm); font-weight: 600; }
+    .bt-pair-face-status.ok   { color: var(--color-success); }
+    .bt-pair-face-status.bad  { color: var(--color-danger); }
+
+    .bt-pair-summary {
+      font-size: var(--text-xs); color: var(--color-text-secondary);
+      background: var(--color-surface-2); border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); line-height: 1.6;
+    }
+    .bt-pair-summary b { color: var(--color-text-primary); }
+    .bt-pair-send-status { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--sp-2); text-align: center; }
+
     /* ── Face Capture Queue (up to 3 thumbnails, FIFO) ───────────────── */
     .face-queue-card {
       background: var(--color-surface);
@@ -2496,7 +2536,7 @@
           <div class="gps-coords" id="bt-status-text">Not connected</div>
           <div class="gps-distance" id="bt-device-name">No device paired</div>
         </div>
-        <button class="bt-connect-btn" id="bt-connect-btn" onclick="BT.connect()">Pair</button>
+        <button class="bt-connect-btn" id="bt-connect-btn" onclick="BT.openPairModal()">Pair</button>
         <div class="bt-status-dot" id="bt-dot"></div>
       </div>
 
@@ -2902,6 +2942,78 @@
       <div style="display:flex; gap:var(--sp-3);">
         <button class="btn btn-ghost" style="flex:1" onclick="UI.closeModal('modal-change-password')">Cancel</button>
         <button class="btn btn-primary" style="flex:1" id="btn-cp-submit" onclick="Auth.changePassword()">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bluetooth Pair Wizard: scan host device → enter details → face check → send -->
+  <div class="modal-overlay" id="modal-bt-pair" role="dialog" aria-modal="true" aria-label="Pair Bluetooth Attendance Beacon">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Pair Attendance Beacon</div>
+      <div class="modal-desc">Connect to the host device running Bluetooth attendance, then send your details.</div>
+
+      <div class="bt-pair-steps-nav">
+        <div class="dot" id="bt-pair-dot-1"></div>
+        <div class="dot" id="bt-pair-dot-2"></div>
+        <div class="dot" id="bt-pair-dot-3"></div>
+        <div class="dot" id="bt-pair-dot-4"></div>
+      </div>
+
+      <!-- STEP 1: Scan & select the host device -->
+      <div class="bt-pair-step" id="bt-pair-step-1">
+        <div class="bt-pair-scan-box" id="bt-pair-scan-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-info);"><polygon points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+          <div class="bt-pair-device-name" id="bt-pair-device-name">No device selected</div>
+          <div class="bt-pair-device-sub" id="bt-pair-device-sub">Tap below to open your browser's Bluetooth picker and choose the host device broadcasting attendance.</div>
+        </div>
+        <button class="btn btn-primary btn-full" id="bt-pair-scan-btn" onclick="BT.scanForHost()">Scan for Host Device</button>
+        <div style="display:flex; gap:var(--sp-3); margin-top:var(--sp-3);">
+          <button class="btn btn-ghost" style="flex:1" onclick="BT.closePairModal()">Cancel</button>
+          <button class="btn btn-primary" style="flex:1" id="bt-pair-next-1" onclick="BT.goToStep(2)" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Roll No & Name -->
+      <div class="bt-pair-step" id="bt-pair-step-2">
+        <div class="form-group">
+          <label class="form-label" for="bt-pair-roll">Roll No</label>
+          <input class="form-input" type="text" id="bt-pair-roll" placeholder="B24CS044" autocomplete="off" />
+          <span class="form-error" id="err-bt-pair-roll">Roll number is required.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="bt-pair-name">Name</label>
+          <input class="form-input" type="text" id="bt-pair-name" placeholder="Your Name" autocomplete="off" />
+          <span class="form-error" id="err-bt-pair-name">Name is required.</span>
+        </div>
+        <div style="display:flex; gap:var(--sp-3); margin-top:var(--sp-3);">
+          <button class="btn btn-ghost" style="flex:1" onclick="BT.goToStep(1)">← Back</button>
+          <button class="btn btn-primary" style="flex:1" onclick="BT.submitDetails()">Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Face recognition (anti-proxy) -->
+      <div class="bt-pair-step" id="bt-pair-step-3">
+        <div class="bt-pair-face-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-primary);"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          <div class="bt-pair-face-status" id="bt-pair-face-status">Verify it's really you before sending attendance.</div>
+        </div>
+        <button class="btn btn-primary btn-full" id="bt-pair-face-btn" onclick="BT.runFaceCheck()">Verify Face</button>
+        <div style="display:flex; gap:var(--sp-3); margin-top:var(--sp-3);">
+          <button class="btn btn-ghost" style="flex:1" onclick="BT.goToStep(2)">← Back</button>
+          <button class="btn btn-primary" style="flex:1" id="bt-pair-next-3" onclick="BT.goToStep(4)" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Review & send to host device -->
+      <div class="bt-pair-step" id="bt-pair-step-4">
+        <div class="bt-pair-summary" id="bt-pair-summary"></div>
+        <button class="btn btn-primary btn-full" id="bt-pair-send-btn" onclick="BT.sendToHost()">Send to Host Device</button>
+        <div class="bt-pair-send-status" id="bt-pair-send-status"></div>
+        <div style="display:flex; gap:var(--sp-3); margin-top:var(--sp-3);">
+          <button class="btn btn-ghost" style="flex:1" onclick="BT.goToStep(3)">← Back</button>
+          <button class="btn btn-primary" style="flex:1" onclick="BT.closePairModal()">Done</button>
+        </div>
       </div>
     </div>
   </div>
@@ -4734,6 +4846,29 @@
     let device    = null;
     let connected = false;
 
+    /*
+     * ── Pair Wizard state & config ──────────────────────────────────
+     * The host device (the machine/phone running the Bluetooth
+     * attendance session) must advertise a GATT server with this
+     * service/characteristic pair. Change these two UUIDs to match
+     * whatever the host implementation uses — they just need to be
+     * identical on both ends.
+     */
+    const ATTEND_SERVICE_UUID = 'a07498ca-ad5b-474e-940d-16f1fbe7e8cd';
+    const ATTEND_CHAR_UUID    = '51ff12bb-3ed8-46e5-b4f9-d64e2fec021b';
+    const BLE_CHUNK_SIZE      = 20; // conservative default BLE MTU payload size
+
+    let pair = {
+      step: 1,
+      device: null,
+      server: null,
+      characteristic: null,
+      roll: '',
+      name: '',
+      faceVerified: false,
+      faceDistance: null,
+    };
+
     function supported() {
       return 'bluetooth' in navigator;
     }
@@ -4812,7 +4947,258 @@
       return { connected, deviceName: device?.name || null, supported: supported() };
     }
 
-    return { connect, disconnect, toggle, getStatus, supported };
+    /*
+     * ==================================================================
+     * Pair Wizard — Scan → Roll/Name → Face check → Send to host device
+     * ==================================================================
+     */
+
+    function _resetPairState() {
+      pair = { step: 1, device: null, server: null, characteristic: null,
+               roll: '', name: '', faceVerified: false, faceDistance: null };
+    }
+
+    /** Open the wizard from the "Pair" button on the home screen. */
+    function openPairModal() {
+      _resetPairState();
+
+      // Prefill Roll No / Name from the signed-in profile, still editable.
+      const user = (typeof Auth !== 'undefined' && Auth.getUser) ? Auth.getUser() : null;
+      document.getElementById('bt-pair-roll').value = user?.studentId || '';
+      document.getElementById('bt-pair-name').value = user?.name || '';
+
+      document.getElementById('bt-pair-device-name').textContent = 'No device selected';
+      document.getElementById('bt-pair-device-sub').textContent  =
+        "Tap below to open your browser's Bluetooth picker and choose the host device broadcasting attendance.";
+      document.getElementById('bt-pair-next-1').disabled = true;
+      document.getElementById('bt-pair-scan-btn').disabled = false;
+      document.getElementById('bt-pair-scan-btn').textContent = 'Scan for Host Device';
+
+      const faceStatus = document.getElementById('bt-pair-face-status');
+      faceStatus.textContent = "Verify it's really you before sending attendance.";
+      faceStatus.className = 'bt-pair-face-status';
+      document.getElementById('bt-pair-next-3').disabled = true;
+
+      document.getElementById('bt-pair-send-status').textContent = '';
+
+      _renderStep();
+      UI.openModal('modal-bt-pair');
+    }
+
+    function closePairModal() {
+      UI.closeModal('modal-bt-pair');
+    }
+
+    function _renderStep() {
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`bt-pair-step-${i}`)?.classList.toggle('active', i === pair.step);
+        const dot = document.getElementById(`bt-pair-dot-${i}`);
+        if (dot) {
+          dot.classList.toggle('done',   i < pair.step);
+          dot.classList.toggle('active', i === pair.step);
+        }
+      }
+      if (pair.step === 4) _renderSummary();
+    }
+
+    function goToStep(n) {
+      pair.step = n;
+      _renderStep();
+    }
+
+    /** STEP 1: Open the native Bluetooth device picker and connect to the chosen host. */
+    async function scanForHost() {
+      if (!supported()) {
+        Toast.show('Bluetooth is not supported on this device/browser.', 'warning');
+        return;
+      }
+      const scanBtn = document.getElementById('bt-pair-scan-btn');
+      scanBtn.disabled = true;
+      scanBtn.textContent = 'Scanning…';
+
+      try {
+        const chosen = await navigator.bluetooth.requestDevice({
+          // Show every nearby device — the host may not advertise our
+          // service UUID directly, so we filter by presence of the
+          // service only as an optional (not required) hint.
+          acceptAllDevices: true,
+          optionalServices: [ATTEND_SERVICE_UUID, 'battery_service'],
+        });
+
+        document.getElementById('bt-pair-device-name').textContent = chosen.name || 'Unnamed device';
+        document.getElementById('bt-pair-device-sub').textContent  = 'Connecting…';
+
+        const server = await chosen.gatt.connect();
+
+        pair.device = chosen;
+        pair.server = server;
+
+        // Try to grab the attendance characteristic now so Step 4 can
+        // send instantly. If the host hasn't implemented this exact
+        // service, we still let the user proceed — sendToHost() will
+        // surface a clear error at send time instead of blocking here.
+        try {
+          const service = await server.getPrimaryService(ATTEND_SERVICE_UUID);
+          pair.characteristic = await service.getCharacteristic(ATTEND_CHAR_UUID);
+          document.getElementById('bt-pair-device-sub').textContent = 'Connected — ready to send attendance.';
+        } catch {
+          pair.characteristic = null;
+          document.getElementById('bt-pair-device-sub').textContent =
+            'Connected, but this device has not exposed the attendance service yet.';
+        }
+
+        chosen.addEventListener('gattserverdisconnected', () => {
+          Toast.show('Host device disconnected.', 'warning');
+          pair.server = null;
+          pair.characteristic = null;
+        });
+
+        Toast.show(`Connected to ${chosen.name || 'host device'}`, 'success');
+        document.getElementById('bt-pair-next-1').disabled = false;
+      } catch (err) {
+        if (err.name !== 'NotFoundError') {
+          Toast.show('Could not connect: ' + err.message, 'error');
+        }
+        document.getElementById('bt-pair-device-sub').textContent =
+          "Tap below to open your browser's Bluetooth picker and choose the host device broadcasting attendance.";
+      } finally {
+        scanBtn.disabled = false;
+        scanBtn.textContent = pair.device ? 'Scan Again' : 'Scan for Host Device';
+      }
+    }
+
+    /** STEP 2: Validate and store Roll No / Name. */
+    function submitDetails() {
+      const rollEl = document.getElementById('bt-pair-roll');
+      const nameEl = document.getElementById('bt-pair-name');
+      let valid = true;
+
+      if (!rollEl.value.trim()) { UI.showFieldError('bt-pair-roll', 'err-bt-pair-roll'); valid = false; }
+      else UI.clearFieldError('bt-pair-roll', 'err-bt-pair-roll');
+
+      if (!nameEl.value.trim()) { UI.showFieldError('bt-pair-name', 'err-bt-pair-name'); valid = false; }
+      else UI.clearFieldError('bt-pair-name', 'err-bt-pair-name');
+
+      if (!valid) return;
+
+      pair.roll = rollEl.value.trim();
+      pair.name = nameEl.value.trim();
+      goToStep(3);
+    }
+
+    /** STEP 3: Live face capture, matched against the enrolled descriptor (anti-proxy). */
+    async function runFaceCheck() {
+      const statusEl = document.getElementById('bt-pair-face-status');
+      const btn      = document.getElementById('bt-pair-face-btn');
+      const nextBtn  = document.getElementById('bt-pair-next-3');
+
+      const storedRaw = localStorage.getItem('attendx_face_descriptor');
+      if (!storedRaw) {
+        Toast.show('Set up Face Login from your Profile first to enable this check.', 'info');
+        return;
+      }
+
+      btn.disabled = true;
+      statusEl.className = 'bt-pair-face-status';
+      statusEl.textContent = 'Loading face recognition engine…';
+
+      try {
+        const storedDescriptor = JSON.parse(storedRaw);
+        const { matched, distance } = await FaceAuth.verify(storedDescriptor, 'Verify it\'s you');
+
+        if (matched === false) {
+          pair.faceVerified = false;
+          pair.faceDistance = distance;
+          statusEl.textContent = `Face did not match (distance ${distance.toFixed(2)}). Try again in good lighting.`;
+          statusEl.classList.add('bad');
+          nextBtn.disabled = true;
+        } else {
+          pair.faceVerified = true;
+          pair.faceDistance = distance;
+          statusEl.textContent = 'Face verified — this looks like you.';
+          statusEl.classList.add('ok');
+          nextBtn.disabled = false;
+        }
+      } catch (err) {
+        statusEl.textContent = 'Face capture cancelled or failed: ' + err.message;
+        statusEl.classList.add('bad');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function _renderSummary() {
+      const summaryEl = document.getElementById('bt-pair-summary');
+      summaryEl.innerHTML = `
+        <div><b>Host device:</b> ${pair.device?.name || 'Unknown device'}</div>
+        <div><b>Roll No:</b> ${pair.roll}</div>
+        <div><b>Name:</b> ${pair.name}</div>
+        <div><b>Face check:</b> ${pair.faceVerified ? 'Verified ✓' : 'Not verified'}</div>
+      `;
+    }
+
+    /** STEP 4: Package the details and write them to the host's GATT characteristic. */
+    async function sendToHost() {
+      const sendBtn    = document.getElementById('bt-pair-send-btn');
+      const statusEl   = document.getElementById('bt-pair-send-status');
+
+      if (!pair.server || !pair.server.connected) {
+        statusEl.textContent = 'Not connected to a host device — go back to Step 1.';
+        return;
+      }
+      if (!pair.characteristic) {
+        // Attempt one more lookup in case the host started advertising
+        // the service after we first connected.
+        try {
+          const service = await pair.server.getPrimaryService(ATTEND_SERVICE_UUID);
+          pair.characteristic = await service.getCharacteristic(ATTEND_CHAR_UUID);
+        } catch {
+          statusEl.textContent =
+            'This host device has not exposed the attendance GATT service (' + ATTEND_SERVICE_UUID + ').';
+          return;
+        }
+      }
+
+      const payload = {
+        roll: pair.roll,
+        name: pair.name,
+        faceVerified: pair.faceVerified,
+        faceDistance: pair.faceDistance,
+        deviceGuid: localStorage.getItem('attendx_device_guid') || null,
+        ts: Date.now(),
+      };
+
+      sendBtn.disabled = true;
+      statusEl.textContent = 'Sending…';
+
+      try {
+        const bytes = new TextEncoder().encode(JSON.stringify(payload));
+        // Write in small chunks — most BLE stacks cap a single write
+        // around ~20 bytes unless both sides negotiate a larger MTU.
+        for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
+          const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
+          await pair.characteristic.writeValue(chunk);
+        }
+        statusEl.textContent = 'Attendance sent to host device ✓';
+        Toast.show('Attendance sent over Bluetooth', 'success');
+
+        // Reflect the paired state on the home-screen widget too.
+        device = pair.device;
+        connected = true;
+        updateUI();
+      } catch (err) {
+        statusEl.textContent = 'Send failed: ' + err.message;
+        Toast.show('Failed to send attendance: ' + err.message, 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    return {
+      connect, disconnect, toggle, getStatus, supported,
+      openPairModal, closePairModal, goToStep, scanForHost,
+      submitDetails, runFaceCheck, sendToHost,
+    };
   })();
 
 
