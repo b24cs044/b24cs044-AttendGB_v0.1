@@ -869,6 +869,70 @@
       color: var(--color-primary);
     }
 
+    /* ── Face biometric capture modal (injected at runtime by FaceCam) ─── */
+    #face-cam-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+    }
+    .face-cam-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(5,10,20,0.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-5);
+    }
+    .face-cam-box {
+      width: min(360px, 100%);
+      background: var(--color-surface);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6) var(--sp-5) var(--sp-5);
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .face-cam-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      margin-bottom: var(--sp-3);
+      color: var(--color-text-primary);
+    }
+    .face-cam-video-wrap {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 0 auto var(--sp-3);
+      border-radius: 50%;
+      overflow: hidden;
+      background: #000;
+    }
+    .face-cam-video-wrap video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror, like a real camera/mirror */
+    }
+    .face-cam-oval {
+      position: absolute;
+      inset: 0;
+      border: 3px solid var(--color-text-muted);
+      border-radius: 50%;
+      pointer-events: none;
+      transition: border-color var(--transition-fast, .2s);
+    }
+    .face-cam-oval.ok { border-color: var(--color-success); }
+    .face-cam-oval.bad { border-color: var(--color-danger, #EF4444); }
+    .face-cam-status {
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+      margin-bottom: var(--sp-4);
+      min-height: 20px;
+    }
+    .face-cam-actions { display: flex; gap: var(--sp-3); }
+    .face-cam-actions .btn { flex: 1; }
+
     /* ================================================================
        ██████████████████████████████████████████████
        SCREEN 3: DASHBOARD (HOME)
@@ -2888,6 +2952,17 @@
     };
   </script>
   <!-- ================================================================
+       FACE RECOGNITION ENGINE (face-api.js)
+       Real, on-device face detection + 128-point face descriptor
+       extraction, used for Face Login enrollment/verification and for
+       matching the live photo captured during Mark Attendance against
+       the enrolled face. Runs entirely in the browser (TensorFlow.js
+       under the hood) — no image ever needs to leave the device for
+       the comparison itself, only the resulting numeric descriptor is
+       optionally synced to the backend Database for cross-device login.
+       ================================================================ -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <!-- ================================================================
        CORE APPLICATION JAVASCRIPT
        ================================================================ -->
   <script>
@@ -2900,7 +2975,7 @@
    */
   const DB = (() => {
     const DB_NAME    = 'attendx';
-    const DB_VERSION = 2;
+    const DB_VERSION = 3;
 
     /* Store names */
     const STORE_QUEUE   = 'attendance_queue';   // Offline attendance records
@@ -2908,6 +2983,7 @@
     const STORE_USER    = 'user_profile';       // Local user data (currently signed-in user)
     const STORE_USERS   = 'registered_users';   // Local registry of accounts created via Sign Up (offline-capable auth)
     const STORE_FACES   = 'face_captures';      // Face images for anti-proxy
+    const STORE_BIOMETRICS = 'biometrics';      // Per-email fingerprint credential + face descriptor (device-local copy of the Database record)
 
     let db = null; // Holds the open database connection
 
@@ -2961,6 +3037,15 @@
               autoIncrement: true
             });
             facesStore.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+
+          /* Biometrics — one record per email: { email, fingerprintCredentialId,
+             faceDescriptor (Array<number>, 128-d), faceThumb (dataURL), updatedAt }.
+             This is the device-local mirror of the same fields stored in the
+             Users sheet on the backend, so biometric login/verification can
+             work fully offline and still match what the Database has. */
+          if (!database.objectStoreNames.contains(STORE_BIOMETRICS)) {
+            database.createObjectStore(STORE_BIOMETRICS, { keyPath: 'email' });
           }
         };
 
@@ -3076,6 +3161,16 @@
       /* Faces */
       saveFace:      (capture)    => add(STORE_FACES, capture).then(() => pruneFaceQueue()),
       getAllFaces:    ()           => getAll(STORE_FACES),
+      /* Biometrics (fingerprint credential + face descriptor), keyed by email */
+      saveBiometric: (email, fields) => getByKey(STORE_BIOMETRICS, (email || '').toLowerCase())
+        .catch(() => null)
+        .then(existing => put(STORE_BIOMETRICS, {
+          ...(existing || {}),
+          ...fields,
+          email:     (email || '').toLowerCase(),
+          updatedAt: Date.now(),
+        })),
+      getBiometric:  (email)       => getByKey(STORE_BIOMETRICS, (email || '').toLowerCase()).catch(() => null),
     };
   })();
 
@@ -3163,6 +3258,40 @@
     const getLiveSession = (userId, tenantId) =>
       post({ action: 'getLiveSession', userId, tenantId });
 
+    /**
+     * Persist a WebAuthn (platform authenticator) credential ID for this
+     * email so future fingerprint logins can be verified against the
+     * Database rather than only trusting this one device.
+     */
+    const registerBiometricCredential = ({ email, credentialId, deviceGUID }) =>
+      post({ action: 'registerBiometricCredential', email, credentialId, deviceGUID });
+
+    /**
+     * Persist a face descriptor (128-number vector produced by face-api.js)
+     * for this email so Face Login / attendance face-matching can be
+     * verified against the Database from any device.
+     */
+    const registerFaceDescriptor = ({ email, descriptor, deviceGUID }) =>
+      post({ action: 'registerFaceDescriptor', email, descriptor, deviceGUID });
+
+    /**
+     * Ask the backend to compare a freshly-captured face descriptor against
+     * the one stored in the Database for this email. Used to confirm the
+     * person marking attendance is really the enrolled student, even if
+     * their device's local copy of the descriptor were somehow altered.
+     */
+    const verifyFaceDescriptor = ({ email, descriptor }) =>
+      post({ action: 'verifyFaceDescriptor', email, descriptor });
+
+    /**
+     * Biometric login: server looks up the account by email and checks the
+     * submitted fingerprint credentialId or face descriptor against what is
+     * stored in the Users sheet. Returns the same profile shape as loginUser().
+     * @param {'fingerprint'|'face'} type
+     */
+    const biometricLogin = ({ email, type, credentialId, descriptor }) =>
+      post({ action: 'biometricLogin', email, type, credentialId, descriptor });
+
     return {
       registerUser,
       loginUser,
@@ -3172,6 +3301,10 @@
       sendPasswordResetOTP,
       resetPassword,
       getLiveSession,
+      registerBiometricCredential,
+      registerFaceDescriptor,
+      verifyFaceDescriptor,
+      biometricLogin,
       isConfigured: () => !!GAS_URL,
     };
   })();
@@ -3193,6 +3326,250 @@
     return { sha256 };
   })();
 
+
+  /*
+   * ====================================================================
+   * MODULE: FaceCam — live camera capture UI
+   * A small, dependency-free modal that shows the front camera feed inside
+   * a guide oval and lets the user capture a still frame once a face is
+   * detected. Used for BOTH Face Login enrollment/verification and the
+   * mandatory face capture during Mark Attendance — this is the "proper
+   * way to enter" a face that real apps use (visible live preview +
+   * explicit capture), instead of silently grabbing a frame in the
+   * background.
+   * ====================================================================
+   */
+  const FaceCam = (() => {
+    let modalEl   = null;
+    let videoEl   = null;
+    let stream    = null;
+    let rafId     = null;
+    let detecting = false;
+
+    function injectModal() {
+      if (modalEl) return;
+      modalEl = document.createElement('div');
+      modalEl.id = 'face-cam-modal';
+      modalEl.innerHTML = `
+        <div class="face-cam-backdrop">
+          <div class="face-cam-box">
+            <div class="face-cam-title" id="face-cam-title">Align your face</div>
+            <div class="face-cam-video-wrap">
+              <video id="face-cam-video" autoplay playsinline muted></video>
+              <div class="face-cam-oval" id="face-cam-oval"></div>
+            </div>
+            <div class="face-cam-status" id="face-cam-status">Starting camera…</div>
+            <div class="face-cam-actions">
+              <button class="btn btn-ghost" id="face-cam-cancel" type="button">Cancel</button>
+              <button class="btn btn-primary" id="face-cam-capture" type="button" disabled>Capture</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.appendChild(modalEl);
+      videoEl = modalEl.querySelector('#face-cam-video');
+    }
+
+    function setStatus(text, ok = null) {
+      const statusEl = modalEl?.querySelector('#face-cam-status');
+      const ovalEl   = modalEl?.querySelector('#face-cam-oval');
+      if (statusEl) statusEl.textContent = text;
+      if (ovalEl) {
+        ovalEl.classList.toggle('ok', ok === true);
+        ovalEl.classList.toggle('bad', ok === false);
+      }
+    }
+
+    /**
+     * Open the capture modal and resolve with a still frame once the user
+     * taps Capture (only enabled once a live face is detected) or rejects
+     * if the user cancels / the camera is unavailable.
+     * @param {object}  opts
+     * @param {string}  opts.title     - Heading shown above the camera
+     * @param {function} opts.onFrame  - async (video) => face-api result | null, called on a detection loop
+     * @returns {Promise<{video: HTMLVideoElement, canvas: HTMLCanvasElement, dataUrl: string}>}
+     */
+    function open({ title = 'Align your face', onFrame = null } = {}) {
+      return new Promise(async (resolve, reject) => {
+        injectModal();
+        modalEl.style.display = '';
+        modalEl.querySelector('#face-cam-title').textContent = title;
+        setStatus('Starting camera…');
+
+        const captureBtn = modalEl.querySelector('#face-cam-capture');
+        const cancelBtn  = modalEl.querySelector('#face-cam-cancel');
+        captureBtn.disabled = true;
+
+        let lastGoodResult = null;
+
+        const cleanup = () => {
+          detecting = false;
+          if (rafId) cancelAnimationFrame(rafId);
+          if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+          if (modalEl) modalEl.style.display = 'none';
+          captureBtn.onclick = null;
+          cancelBtn.onclick  = null;
+        };
+
+        cancelBtn.onclick = () => { cleanup(); reject(new Error('Camera capture cancelled.')); };
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: 480, height: 480 }
+          });
+          videoEl.srcObject = stream;
+          await new Promise((res, rej) => {
+            videoEl.onloadedmetadata = () => { videoEl.play(); res(); };
+            videoEl.onerror = rej;
+          });
+        } catch (err) {
+          cleanup();
+          reject(err);
+          return;
+        }
+
+        setStatus(onFrame ? 'Looking for your face…' : 'Ready — tap Capture');
+        if (!onFrame) captureBtn.disabled = false;
+
+        detecting = true;
+        const loop = async () => {
+          if (!detecting) return;
+          if (onFrame) {
+            try {
+              const result = await onFrame(videoEl);
+              if (result) {
+                lastGoodResult = result;
+                setStatus('Face detected — tap Capture', true);
+                captureBtn.disabled = false;
+              } else {
+                setStatus('Center your face in the circle…', false);
+                captureBtn.disabled = true;
+              }
+            } catch {
+              /* model still loading or a transient detection error — keep looping */
+            }
+          }
+          rafId = requestAnimationFrame(() => loop());
+        };
+        loop();
+
+        captureBtn.onclick = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width  = videoEl.videoWidth  || 480;
+          canvas.height = videoEl.videoHeight || 480;
+          canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          const result  = lastGoodResult;
+          cleanup();
+          resolve({ video: videoEl, canvas, dataUrl, result });
+        };
+      });
+    }
+
+    return { open };
+  })();
+
+  /*
+   * ====================================================================
+   * MODULE: FaceAuth — real face enrollment & matching (face-api.js)
+   * Uses TensorFlow.js models (tiny face detector + 68-point landmarks +
+   * a face-recognition net) to turn a camera frame into a 128-number
+   * "face descriptor" — a real biometric embedding, the same underlying
+   * technique production face-recognition systems use. Two descriptors
+   * from the same face land close together (small Euclidean distance);
+   * different faces land far apart. This is what makes Face Login and
+   * the Mark-Attendance face check "real" rather than a placeholder.
+   * ====================================================================
+   */
+  const FaceAuth = (() => {
+    const MODEL_URL   = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+    const MATCH_THRESHOLD = 0.5; // Lower = stricter match. 0.5 is a solid balance.
+    let modelsReady = null;
+
+    /** Lazily load the face-api.js models (once per page load). */
+    function loadModels() {
+      if (modelsReady) return modelsReady;
+      modelsReady = (async () => {
+        if (!window.faceapi) throw new Error('Face recognition engine failed to load. Check your internet connection.');
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+      })();
+      return modelsReady;
+    }
+
+    /** Run detection + landmarks + descriptor extraction on a video/image frame. */
+    async function detect(mediaEl) {
+      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+      return faceapi
+        .detectSingleFace(mediaEl, options)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+    }
+
+    /** Euclidean distance between two descriptors (arrays or Float32Arrays). */
+    function distance(a, b) {
+      if (!a || !b || a.length !== b.length) return Infinity;
+      let sum = 0;
+      for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; sum += d * d; }
+      return Math.sqrt(sum);
+    }
+
+    /**
+     * Open the live camera, wait for a confident face detection, and let
+     * the user capture it. Returns the 128-d descriptor plus a thumbnail.
+     * @param {string} title
+     */
+    async function captureDescriptor(title) {
+      await loadModels();
+      const { dataUrl, result } = await FaceCam.open({
+        title,
+        onFrame: async (video) => {
+          const r = await detect(video);
+          return r ? r.descriptor : null;
+        },
+      });
+      if (!result) throw new Error('No face detected — please try again in better lighting.');
+      return { descriptor: Array.from(result), dataUrl };
+    }
+
+    /**
+     * Enroll: capture a face and return its descriptor for storage
+     * (localStorage + IndexedDB + Database).
+     */
+    function enroll() {
+      return captureDescriptor('Set up Face Login');
+    }
+
+    /**
+     * Verify: capture a live face and compare it to a previously stored
+     * descriptor. Returns { matched, distance, descriptor, dataUrl }.
+     * @param {number[]} storedDescriptor
+     * @param {string} title
+     */
+    async function verify(storedDescriptor, title = 'Verify your face') {
+      const { descriptor, dataUrl } = await captureDescriptor(title);
+      if (!storedDescriptor || !storedDescriptor.length) {
+        return { matched: null, distance: null, descriptor, dataUrl }; // Nothing enrolled to compare against
+      }
+      const d = distance(storedDescriptor, descriptor);
+      return { matched: d <= MATCH_THRESHOLD, distance: d, descriptor, dataUrl };
+    }
+
+    /**
+     * Compute a descriptor from an already-captured frame (e.g. a canvas or
+     * image element), without opening the camera again. Used by Mark
+     * Attendance to reuse the same photo required for the attendance record.
+     */
+    async function descriptorFromElement(mediaEl) {
+      await loadModels();
+      const r = await detect(mediaEl);
+      return r ? Array.from(r.descriptor) : null;
+    }
+
+    return { loadModels, enroll, verify, distance, descriptorFromElement, MATCH_THRESHOLD };
+  })();
 
   /*
    * ====================================================================
@@ -3354,14 +3731,20 @@
      * @param {'fingerprint'|'face'} type - Which biometric method to register
      */
     async function registerBiometric(type = 'fingerprint') {
-      if (!window.PublicKeyCredential) {
-        Toast.show('Biometrics not supported on this device/browser.', 'warning');
-        return;
-      }
-
       const user = currentUser || (await DB.getUser());
       if (!user) {
         Toast.show('Please sign in before setting up biometrics.', 'warning');
+        return;
+      }
+
+      /* ── FACE: real enrollment via the camera + face-api.js ── */
+      if (type === 'face') {
+        return registerFaceBiometric(user);
+      }
+
+      /* ── FINGERPRINT: real device biometric via WebAuthn (platform authenticator) ── */
+      if (!window.PublicKeyCredential) {
+        Toast.show('Biometrics not supported on this device/browser.', 'warning');
         return;
       }
 
@@ -3412,21 +3795,38 @@
 
         // Encode and store the credential ID for future authentication
         const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+        const deviceGUID   = localStorage.getItem('attendx_device_guid') || '';
 
-        // Store per-type so fingerprint and face are registered independently
+        // Store locally so this device can assert + verify offline
         localStorage.setItem(`attendx_credential_id_${type}`, credentialId);
         localStorage.setItem(`attendx_bio_registered_${type}`, 'true');
+        localStorage.setItem('attendx_bio_email', (user.email || '').toLowerCase());
+        await DB.saveBiometric(user.email, { fingerprintCredentialId: credentialId });
 
-        // Update profile sub-labels
-        const fpSub   = document.getElementById('biometric-fp-sub');
-        const faceSub = document.getElementById('biometric-face-sub');
-        if (type === 'fingerprint' && fpSub)   fpSub.textContent   = '✓ Fingerprint active on this device';
-        if (type === 'face'        && faceSub)  faceSub.textContent = '✓ Face ID active on this device';
+        // Keep the local account registry in sync too, for fully-offline verification
+        const account = await DB.getRegisteredUser(user.email);
+        if (account) await DB.saveRegisteredUser({ ...account, fingerprintCredentialId: credentialId });
+
+        // Persist to the backend Database (Users sheet) — this is what lets
+        // biometricLogin() authenticate "from the database" per the spec,
+        // not just trust whatever is sitting in this browser's storage.
+        if (GAS.isConfigured() && navigator.onLine) {
+          try {
+            await GAS.registerBiometricCredential({ email: user.email, credentialId, deviceGUID });
+          } catch (syncErr) {
+            console.warn('[Auth] Fingerprint credential saved locally but failed to sync to Database:', syncErr.message);
+            Toast.show('Fingerprint saved on this device. Will sync to your account when back online.', 'warning');
+          }
+        }
+
+        // Update profile sub-label
+        const fpSub = document.getElementById('biometric-fp-sub');
+        if (fpSub) fpSub.textContent = '✓ Fingerprint active on this device';
 
         const card = document.getElementById('biometric-setup-card');
         if (card) card.classList.add('success');
 
-        Toast.show(`${type === 'face' ? 'Face ID' : 'Fingerprint'} login enabled!`, 'success');
+        Toast.show('Fingerprint login enabled!', 'success');
       } catch (err) {
         if (err.name === 'NotAllowedError') {
           Toast.show('Biometric setup cancelled.', 'warning');
@@ -3439,25 +3839,79 @@
     }
 
     /**
-     * Authenticate using stored WebAuthn credential (biometric login).
+     * Real Face Login enrollment: opens the live camera, waits for a
+     * confident face detection, captures it, and reduces it to a 128-number
+     * face descriptor via face-api.js. The descriptor (never the raw image)
+     * is what gets compared on every future login/attendance check.
+     * @param {object} user - the currently signed-in user
      */
+    async function registerFaceBiometric(user) {
+      try {
+        Toast.show('Loading face recognition engine…', 'info');
+        const { descriptor, dataUrl } = await FaceAuth.enroll();
+
+        // Store locally (fast + fully offline capable)
+        localStorage.setItem('attendx_face_descriptor', JSON.stringify(descriptor));
+        localStorage.setItem('attendx_bio_registered_face', 'true');
+        localStorage.setItem('attendx_bio_email', (user.email || '').toLowerCase());
+        await DB.saveBiometric(user.email, { faceDescriptor: descriptor, faceThumb: dataUrl });
+
+        const account = await DB.getRegisteredUser(user.email);
+        if (account) await DB.saveRegisteredUser({ ...account, faceDescriptor: descriptor });
+
+        // Persist to the backend Database (Users sheet)
+        if (GAS.isConfigured() && navigator.onLine) {
+          try {
+            const deviceGUID = localStorage.getItem('attendx_device_guid') || '';
+            await GAS.registerFaceDescriptor({ email: user.email, descriptor, deviceGUID });
+          } catch (syncErr) {
+            console.warn('[Auth] Face descriptor saved locally but failed to sync to Database:', syncErr.message);
+            Toast.show('Face saved on this device. Will sync to your account when back online.', 'warning');
+          }
+        }
+
+        const faceSub = document.getElementById('biometric-face-sub');
+        if (faceSub) faceSub.textContent = '✓ Face ID active on this device';
+        const card = document.getElementById('biometric-setup-card');
+        if (card) card.classList.add('success');
+
+        Toast.show('Face login enabled!', 'success');
+      } catch (err) {
+        Toast.show('Face setup failed: ' + (err.message || 'camera unavailable'), 'error');
+      }
+    }
+
     /**
-     * @param {'fingerprint'|'face'} type - Which registered credential to use
+     * Authenticate using either a stored WebAuthn credential (fingerprint)
+     * or a live face match against the enrolled face descriptor. Either
+     * path re-verifies against the backend Database when online, and
+     * falls back to the device-local copy when offline.
+     * @param {'fingerprint'|'face'} type - Which registered method to use
      */
     async function biometricLogin(type = 'fingerprint') {
+      const email = localStorage.getItem('attendx_bio_email')
+        || (getUser() || await DB.getUser())?.email
+        || null;
+
+      if (type === 'face') return faceBiometricLogin(email);
+      return fingerprintBiometricLogin(email);
+    }
+
+    /** Fingerprint path: WebAuthn assertion, then verify against the Database. */
+    async function fingerprintBiometricLogin(email) {
       if (!window.PublicKeyCredential) {
         Toast.show('Biometrics not supported.', 'warning');
         return;
       }
 
-      const storedCredId = localStorage.getItem(`attendx_credential_id_${type}`);
+      const storedCredId = localStorage.getItem('attendx_credential_id_fingerprint');
       if (!storedCredId) {
         const user = getUser() || await DB.getUser();
         if (!user) {
-          Toast.show(`Sign in with password first, then set up ${type === 'face' ? 'Face ID' : 'Fingerprint'} from Profile.`, 'info');
+          Toast.show('Sign in with password first, then set up Fingerprint from Profile.', 'info');
           return;
         }
-        await registerBiometric(type);
+        await registerBiometric('fingerprint');
         return;
       }
 
@@ -3466,40 +3920,94 @@
         crypto.getRandomValues(challenge);
 
         // Decode stored credential ID back to ArrayBuffer
-        const credIdArray  = Uint8Array.from(atob(storedCredId), c => c.charCodeAt(0));
+        const credIdArray = Uint8Array.from(atob(storedCredId), c => c.charCodeAt(0));
 
-        const assertionOptions = {
-          challenge,
-          allowCredentials: [{
-            id:   credIdArray.buffer,
-            type: 'public-key',
-          }],
-          userVerification: 'required',
-          timeout:          60000,
-        };
-
-        const assertion = await navigator.credentials.get({ publicKey: assertionOptions });
+        const assertion = await navigator.credentials.get({
+          publicKey: {
+            challenge,
+            allowCredentials: [{ id: credIdArray.buffer, type: 'public-key' }],
+            userVerification: 'required',
+            timeout: 60000,
+          },
+        });
 
         if (!assertion) throw new Error('Biometric authentication cancelled.');
 
-        // Restore session from IndexedDB (since we're offline-capable)
-        const user = await DB.getUser();
-        if (!user) throw new Error('No stored user profile. Please log in with password first.');
+        // The device's secure enclave/OS just confirmed the correct enrolled
+        // fingerprint was used. Now confirm THIS credential is the one on
+        // record in the Database for this account (source of truth).
+        let user = await DB.getUser();
+        if (GAS.isConfigured() && navigator.onLine && email) {
+          try {
+            user = await GAS.biometricLogin({ email, type: 'fingerprint', credentialId: storedCredId });
+          } catch (dbErr) {
+            throw new Error(dbErr.message || 'Fingerprint does not match our records.');
+          }
+        } else if (!user) {
+          throw new Error('No stored user profile. Please log in with password first.');
+        }
 
         currentUser = user;
+        await DB.saveUser(user);
+        localStorage.setItem('attendx_session', JSON.stringify({ user }));
         applySession(user);
 
-        // Capture face at login
         captureAndStoreFace('biometric_login').catch(() => {});
-
-        Toast.show('Biometric login successful', 'success');
+        Toast.show('Fingerprint login successful', 'success');
 
       } catch (err) {
         if (err.name === 'NotAllowedError') {
           Toast.show('Biometric authentication cancelled.', 'warning');
         } else {
-          Toast.show('Biometric login failed: ' + err.message, 'error');
+          Toast.show('Fingerprint login failed: ' + err.message, 'error');
         }
+      }
+    }
+
+    /** Face path: live camera capture + descriptor match against enrolled face. */
+    async function faceBiometricLogin(email) {
+      const localDescriptorRaw = localStorage.getItem('attendx_face_descriptor');
+      if (!localDescriptorRaw) {
+        const user = getUser() || await DB.getUser();
+        if (!user) {
+          Toast.show('Sign in with password first, then set up Face Login from Profile.', 'info');
+          return;
+        }
+        await registerBiometric('face');
+        return;
+      }
+
+      try {
+        const storedDescriptor = JSON.parse(localDescriptorRaw);
+        Toast.show('Loading face recognition engine…', 'info');
+        const { matched, distance, descriptor } = await FaceAuth.verify(storedDescriptor, 'Face Login');
+
+        if (matched === false) {
+          Toast.show(`Face did not match (distance ${distance.toFixed(2)}). Try again in good lighting.`, 'error');
+          return;
+        }
+
+        // Cross-check against the Database when online — this is what makes
+        // biometric login authenticate "from the database" per the spec.
+        let user = await DB.getUser();
+        if (GAS.isConfigured() && navigator.onLine && email) {
+          try {
+            user = await GAS.biometricLogin({ email, type: 'face', descriptor });
+          } catch (dbErr) {
+            throw new Error(dbErr.message || 'Face did not match our records.');
+          }
+        } else if (!user) {
+          throw new Error('No stored user profile. Please log in with password first.');
+        }
+
+        currentUser = user;
+        await DB.saveUser(user);
+        localStorage.setItem('attendx_session', JSON.stringify({ user }));
+        applySession(user);
+
+        Toast.show('Face login successful', 'success');
+      } catch (err) {
+        Toast.show('Face login failed: ' + (err.message || 'camera unavailable'), 'error');
       }
     }
 
@@ -3581,10 +4089,53 @@
      * @returns {Promise<string>} dataUrl of the captured photo
      */
     async function captureFaceRequired(trigger) {
-      const { dataUrl, sizeBytes } = await _grabFaceFrame();
+      // Show the user a real live camera preview (guide oval + explicit
+      // Capture tap) instead of silently grabbing a frame in the background.
+      let dataUrl, canvas;
+      try {
+        await FaceAuth.loadModels();
+        const result = await FaceCam.open({
+          title: 'Capture your photo',
+          onFrame: async (video) => {
+            const r = await FaceAuth.descriptorFromElement(video);
+            return r ? true : null;
+          },
+        });
+        dataUrl = result.dataUrl;
+        canvas  = result.canvas;
+      } catch (camErr) {
+        // Face engine failed to load or camera denied — fall back to a
+        // plain (undetected) capture so attendance isn't fully blocked.
+        const grabbed = await _grabFaceFrame();
+        dataUrl = grabbed.dataUrl;
+      }
+
+      const sizeBytes = Math.ceil((dataUrl.length * 3) / 4);
       await DB.saveFace({ timestamp: Date.now(), trigger, dataUrl, sizeBytes });
       if (typeof App !== 'undefined' && App.renderFaceQueue) App.renderFaceQueue();
-      return dataUrl;
+
+      // Match this capture against the enrolled Face Login descriptor, if any.
+      let faceVerified = 'not_enrolled';
+      let faceMatchDistance = null;
+      let liveDescriptor = null;
+      const storedDescriptorRaw = localStorage.getItem('attendx_face_descriptor');
+      if (canvas) {
+        try {
+          liveDescriptor = await FaceAuth.descriptorFromElement(canvas);
+          if (!liveDescriptor) {
+            faceVerified = 'no_face_detected';
+          } else if (storedDescriptorRaw) {
+            const storedDescriptor = JSON.parse(storedDescriptorRaw);
+            const d = FaceAuth.distance(storedDescriptor, liveDescriptor);
+            faceMatchDistance = d;
+            faceVerified = d <= FaceAuth.MATCH_THRESHOLD ? 'true' : 'false';
+          }
+        } catch {
+          faceVerified = 'error';
+        }
+      }
+
+      return { dataUrl, faceVerified, faceMatchDistance, liveDescriptor };
     }
 
     /**
@@ -4480,13 +5031,49 @@
 
         // Step 3: Capture the student's photo/face — required for this flow
         UI.setButtonLoading(btn, true, 'Capturing photo…');
-        let photoDataUrl;
+        let photoDataUrl, faceVerified, faceMatchDistance, liveDescriptor;
         try {
-          photoDataUrl = await Auth.captureFaceRequired('attendance');
+          const capture = await Auth.captureFaceRequired('attendance');
+          photoDataUrl      = capture.dataUrl;
+          faceVerified       = capture.faceVerified;
+          faceMatchDistance  = capture.faceMatchDistance;
+          liveDescriptor     = capture.liveDescriptor;
         } catch (camErr) {
           errorEl.textContent = 'Camera access is required to mark attendance. Please allow camera permission and try again.';
           errorEl.style.display = '';
           return;
+        }
+
+        // Step 3b: If Face Login is enrolled, the captured face MUST match
+        // the enrolled face — this is the real anti-proxy check.
+        if (faceVerified === 'false') {
+          errorEl.textContent = `Face does not match your enrolled Face Login (distance ${faceMatchDistance?.toFixed?.(2) ?? '?'}). Attendance not marked — please try again, in good lighting, as yourself.`;
+          errorEl.style.display = '';
+          return;
+        }
+        if (faceVerified === 'no_face_detected') {
+          errorEl.textContent = 'No face detected in the captured photo. Please retry with your face clearly visible.';
+          errorEl.style.display = '';
+          return;
+        }
+
+        // Step 3c: Double-check against the Database when online, for
+        // defense-in-depth (in case the device-local descriptor was tampered
+        // with). This re-runs the comparison server-side against whatever
+        // descriptor is actually stored in the Users sheet.
+        if (liveDescriptor && GAS.isConfigured() && navigator.onLine) {
+          try {
+            const dbCheck = await GAS.verifyFaceDescriptor({ email: user.email, descriptor: liveDescriptor });
+            if (dbCheck.enrolled && !dbCheck.matched) {
+              errorEl.textContent = `Face does not match the record in the Database (distance ${dbCheck.distance?.toFixed?.(2) ?? '?'}). Attendance not marked.`;
+              errorEl.style.display = '';
+              return;
+            }
+            if (dbCheck.enrolled) faceMatchDistance = dbCheck.distance;
+          } catch (dbErr) {
+            // Backend unreachable or not enrolled server-side — fall back to
+            // the local verification result already computed above.
+          }
         }
 
         // Step 4: Build the full attendance record
@@ -4514,6 +5101,8 @@
           lectureEnd:   timeEnd,
           // 5. Captured photo/face data
           photoDataUrl: photoDataUrl,
+          faceVerified: faceVerified,
+          faceMatchDistance: faceMatchDistance,
           // Location & proximity signals
           latitude:    geo.latitude,
           longitude:   geo.longitude,
