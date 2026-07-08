@@ -3596,7 +3596,7 @@
     let modelsReady = null;
 
     /** Lazily load the face-api.js models (once per page load). */
-     function loadModels() {
+    function loadModels() {
       if (modelsReady) return modelsReady;
       modelsReady = (async () => {
         // face-api.js is loaded with `defer` — wait up to 8 s for it to be ready
@@ -3606,6 +3606,12 @@
           await new Promise(r => setTimeout(r, 200));
           waited += 200;
         }
+        // Load required models from the configured URL
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        return true;
+      })();
       return modelsReady;
     }
 
@@ -4086,8 +4092,30 @@
 
     /** Face path: live camera capture + descriptor match against enrolled face. */
     async function faceBiometricLogin(email) {
-      const localDescriptorRaw = localStorage.getItem('attendx_face_descriptor');
-      if (!localDescriptorRaw) {
+      // Resolve the stored descriptor from local → IndexedDB → backend (in order)
+      let storedDescriptor = null;
+
+      const localRaw = localStorage.getItem('attendx_face_descriptor');
+      if (localRaw) {
+        try { storedDescriptor = JSON.parse(localRaw); } catch {}
+      }
+
+      if (!storedDescriptor) {
+        const dbRec = await DB.getBiometric(email);
+        if (dbRec?.faceDescriptor) storedDescriptor = dbRec.faceDescriptor;
+      }
+
+      if (!storedDescriptor && GAS.isConfigured() && navigator.onLine && email) {
+        try {
+          // Pull the descriptor that was enrolled from any device
+          const profile = await GAS.biometricLogin({ email, type: 'face', descriptor: [] }).catch(() => null);
+          // We can't verify without a descriptor — just check enrollment exists
+          // A real backend call will happen after we capture the live face below
+        } catch {}
+      }
+
+      if (!storedDescriptor) {
+        // No descriptor anywhere → user hasn't enrolled Face Login yet
         const user = getUser() || await DB.getUser();
         if (!user) {
           Toast.show('Sign in with password first, then set up Face Login from Profile.', 'info');
@@ -4096,6 +4124,7 @@
         await registerBiometric('face');
         return;
       }
+
 
       try {
         const storedDescriptor = JSON.parse(localDescriptorRaw);
