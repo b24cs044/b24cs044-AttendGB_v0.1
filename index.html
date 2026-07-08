@@ -3591,21 +3591,21 @@
    * ====================================================================
    */
   const FaceAuth = (() => {
-    const MODEL_URL   = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+    const MODEL_URL   = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
     const MATCH_THRESHOLD = 0.5; // Lower = stricter match. 0.5 is a solid balance.
     let modelsReady = null;
 
     /** Lazily load the face-api.js models (once per page load). */
-    function loadModels() {
+     function loadModels() {
       if (modelsReady) return modelsReady;
       modelsReady = (async () => {
-        if (!window.faceapi) throw new Error('Face recognition engine failed to load. Check your internet connection.');
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ]);
-      })();
+        // face-api.js is loaded with `defer` — wait up to 8 s for it to be ready
+        let waited = 0;
+        while (!window.faceapi) {
+          if (waited >= 8000) throw new Error('Face recognition engine failed to load. Check your internet connection.');
+          await new Promise(r => setTimeout(r, 200));
+          waited += 200;
+        }
       return modelsReady;
     }
 
@@ -3614,7 +3614,7 @@
       const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
       return faceapi
         .detectSingleFace(mediaEl, options)
-        .withFaceLandmarks()
+        .withFaceLandmarks(true)   // ← true = use tiny landmark model
         .withFaceDescriptor();
     }
 
@@ -3999,11 +3999,21 @@
      * @param {'fingerprint'|'face'} type - Which registered method to use
      */
     async function biometricLogin(type = 'fingerprint') {
-      const email = localStorage.getItem('attendx_bio_email')
+      // Resolve email: stored session > login-email input > nothing
+      const email =
+        localStorage.getItem('attendx_bio_email')
         || (getUser() || await DB.getUser())?.email
+        || document.getElementById('login-email')?.value?.trim()?.toLowerCase()
         || null;
 
-      if (type === 'face') return faceBiometricLogin(email);
+      if (type === 'face') {
+        if (!email) {
+          Toast.show('Enter your email first, then tap Face ID.', 'info');
+          document.getElementById('login-email')?.focus();
+          return;
+        }
+        return faceBiometricLogin(email);
+      }
       return fingerprintBiometricLogin(email);
     }
 
