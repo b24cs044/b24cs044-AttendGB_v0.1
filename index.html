@@ -3071,7 +3071,7 @@
        the comparison itself, only the resulting numeric descriptor is
        optionally synced to the backend Database for cross-device login.
        ================================================================ -->
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <!-- ================================================================
        CORE APPLICATION JAVASCRIPT
        ================================================================ -->
@@ -3591,7 +3591,7 @@
    * ====================================================================
    */
   const FaceAuth = (() => {
-    const MODEL_URL   = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+    const MODEL_URL   = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
     const MATCH_THRESHOLD = 0.5; // Lower = stricter match. 0.5 is a solid balance.
     let modelsReady = null;
 
@@ -3599,18 +3599,12 @@
     function loadModels() {
       if (modelsReady) return modelsReady;
       modelsReady = (async () => {
-        // face-api.js is loaded with `defer` — wait up to 8 s for it to be ready
-        let waited = 0;
-        while (!window.faceapi) {
-          if (waited >= 8000) throw new Error('Face recognition engine failed to load. Check your internet connection.');
-          await new Promise(r => setTimeout(r, 200));
-          waited += 200;
-        }
-        // Load required models from the configured URL
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-        return true;
+        if (!window.faceapi) throw new Error('Face recognition engine failed to load. Check your internet connection.');
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
       })();
       return modelsReady;
     }
@@ -3620,7 +3614,7 @@
       const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
       return faceapi
         .detectSingleFace(mediaEl, options)
-        .withFaceLandmarks(true)   // ← true = use tiny landmark model
+        .withFaceLandmarks()
         .withFaceDescriptor();
     }
 
@@ -4005,21 +3999,11 @@
      * @param {'fingerprint'|'face'} type - Which registered method to use
      */
     async function biometricLogin(type = 'fingerprint') {
-      // Resolve email: stored session > login-email input > nothing
-      const email =
-        localStorage.getItem('attendx_bio_email')
+      const email = localStorage.getItem('attendx_bio_email')
         || (getUser() || await DB.getUser())?.email
-        || document.getElementById('login-email')?.value?.trim()?.toLowerCase()
         || null;
 
-      if (type === 'face') {
-        if (!email) {
-          Toast.show('Enter your email first, then tap Face ID.', 'info');
-          document.getElementById('login-email')?.focus();
-          return;
-        }
-        return faceBiometricLogin(email);
-      }
+      if (type === 'face') return faceBiometricLogin(email);
       return fingerprintBiometricLogin(email);
     }
 
@@ -4092,30 +4076,8 @@
 
     /** Face path: live camera capture + descriptor match against enrolled face. */
     async function faceBiometricLogin(email) {
-      // Resolve the stored descriptor from local → IndexedDB → backend (in order)
-      let storedDescriptor = null;
-
-      const localRaw = localStorage.getItem('attendx_face_descriptor');
-      if (localRaw) {
-        try { storedDescriptor = JSON.parse(localRaw); } catch {}
-      }
-
-      if (!storedDescriptor) {
-        const dbRec = await DB.getBiometric(email);
-        if (dbRec?.faceDescriptor) storedDescriptor = dbRec.faceDescriptor;
-      }
-
-      if (!storedDescriptor && GAS.isConfigured() && navigator.onLine && email) {
-        try {
-          // Pull the descriptor that was enrolled from any device
-          const profile = await GAS.biometricLogin({ email, type: 'face', descriptor: [] }).catch(() => null);
-          // We can't verify without a descriptor — just check enrollment exists
-          // A real backend call will happen after we capture the live face below
-        } catch {}
-      }
-
-      if (!storedDescriptor) {
-        // No descriptor anywhere → user hasn't enrolled Face Login yet
+      const localDescriptorRaw = localStorage.getItem('attendx_face_descriptor');
+      if (!localDescriptorRaw) {
         const user = getUser() || await DB.getUser();
         if (!user) {
           Toast.show('Sign in with password first, then set up Face Login from Profile.', 'info');
@@ -4124,7 +4086,6 @@
         await registerBiometric('face');
         return;
       }
-
 
       try {
         const storedDescriptor = JSON.parse(localDescriptorRaw);
