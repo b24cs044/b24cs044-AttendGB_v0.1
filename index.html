@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  AttendX — Biometric & GPS Attendance PWA (AttendX-S)                         ║
+  ║  AttendX — Biometric & GPS Attendance PWA                          ║
   ║  Version: 1.0.0                                                     ║
   ║  Stack: Vanilla HTML5 / CSS3 / ES6+, WebAuthn, IndexedDB, GAS      ║
   ║  Deployment: Cloudflare Pages                                       ║
@@ -1983,27 +1983,6 @@
       <div class="modal-title">Mark Attendance</div>
       <div class="modal-desc">Enter the lecture details below. Your photo will be captured automatically after you submit.</div>
 
-      <!-- ── Live Proximity Session card ─────────────────────────────
-           Shown only when App has detected an active QR+Proximity
-           session broadcast live from AttendX-T. Toggling it on binds
-           this form to that session: subject/time are locked to the
-           session, the GPS geofence switches to the teacher's captured
-           location + radius, and submission is validated server-side
-           against that session (instead of the plain manual flow). -->
-      <div class="card" id="ma-live-session-card" style="display:none; margin-bottom: var(--sp-4); border-color: var(--color-primary); background: var(--color-primary-glow);">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-          <div class="banner-dot" style="background:var(--color-primary); width:8px; height:8px; border-radius:999px;"></div>
-          <span style="font-size:var(--text-xs); font-weight:700; letter-spacing:0.04em; color:var(--color-primary); text-transform:uppercase;">Live Session</span>
-          <span style="margin-left:auto; font-size:var(--text-xs); color:var(--color-text-secondary);" id="ma-live-session-timer">--:--</span>
-        </div>
-        <div class="font-display font-semibold" style="font-size:var(--text-md);" id="ma-live-session-title">—</div>
-        <div style="font-size:var(--text-xs); color:var(--color-text-secondary); margin-top:2px;" id="ma-live-session-meta">—</div>
-        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:var(--text-sm); cursor:pointer;">
-          <input type="checkbox" id="ma-use-live-session" checked onchange="App.toggleUseLiveSession(this.checked)" />
-          Use this live session (auto GPS proximity check)
-        </label>
-      </div>
-
       <div class="form-group">
         <label class="form-label" for="ma-subject">Subject / Course Code</label>
         <div class="subject-dropdown-wrap">
@@ -2092,7 +2071,7 @@
       <div id="ma-error" style="display:none; color: var(--color-danger); font-size: var(--text-xs); margin-bottom: var(--sp-3);"></div>
 
       <div style="display:flex; gap: var(--sp-3);">
-        <button class="btn btn-ghost" style="flex:1" onclick="App.closeMarkAttendanceModal()">Cancel</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="UI.closeModal('modal-mark-attendance')">Cancel</button>
         <button class="btn btn-primary" style="flex:1" id="btn-ma-submit" onclick="App.submitMarkAttendance()">Submit</button>
       </div>
     </div>
@@ -2120,7 +2099,6 @@
     <div class="banner banner-session" id="banner-session">
       <div class="banner-dot"></div>
       <span id="session-label">CS301 — Attendance window open (closes in 12 min)</span>
-      <button class="btn btn-ghost" id="banner-session-btn" style="margin-left:auto; padding:6px 12px; font-size:12px; color:#818CF8;" onclick="App.openMarkAttendanceModal()">Mark Now</button>
     </div>
 
     <!-- ════════════════════════════════════════════════════════════
@@ -3080,17 +3058,7 @@
        * stored in IndexedDB only and synced when a URL is provided.
        * ══════════════════════════════════════════════════════════════
        */
-      // AttendX-S's own backend — accounts, manual attendance, history.
       gasUrl: 'https://script.google.com/macros/s/AKfycbzFAXpupnA_sNAPwsnVS9uZYm8rdaOw43qhLOKU3zrg9tEbXBahgxbsk5akBIwfHHPECg/exec', // Paste your GAS Web App URL here (e.g., https://script.google.com/macros/s/AKfycbx.../exec)
-
-      // AttendX-T's backend — AttendX-S and AttendX-T run on SEPARATE GAS
-      // deployments/Sheets that can't be merged. Live QR+Proximity sessions
-      // are created and owned by AttendX-T's backend, so this app talks to
-      // it DIRECTLY (in addition to its own gasUrl above) for two things:
-      // discovering active sessions and submitting a proximity attendance
-      // attempt for server-side distance validation. Everything else
-      // (login, manual attendance, history) still uses gasUrl only.
-      teacherGasUrl: 'https://script.google.com/macros/s/AKfycbwGVgEYYr-WUfXQpUzs8cBOLmdLYnDEpBPkhehjKMQLyRfAXP3GmU4e4b4QzODvXxt1/exec', // e.g. https://script.google.com/macros/s/AKfycbw.../exec
     };
   </script>
   <!-- ================================================================
@@ -3332,28 +3300,16 @@
      */
     const GAS_URL = window.ATTEND_X_CONFIG?.gasUrl || '';
 
-    // AttendX-T's backend — separate deployment/Sheet from GAS_URL above,
-    // used ONLY for the two calls that need to reach the teacher's live
-    // session data directly: discovering active sessions and submitting a
-    // proximity attendance attempt for server-side distance validation.
-    const TEACHER_GAS_URL = window.ATTEND_X_CONFIG?.teacherGasUrl || '';
-
     /**
-     * Sends a POST request to a GAS backend with a JSON payload.
+     * Sends a POST request to the GAS backend with a JSON payload.
      * All API calls are wrapped in a unified error format.
      *
      * @param {object} payload - Must include { action: 'actionName', ...data }
-     * @param {string} [targetUrl] - Which backend to call; defaults to this
-     *   app's own backend (GAS_URL). Pass TEACHER_GAS_URL to reach AttendX-T's
-     *   backend instead (see getActiveProximitySessions/submitProximityAttendance).
      * @returns {Promise<object>} Response from GAS: { success, data, error }
      */
-    async function post(payload, targetUrl) {
-      const url = targetUrl || GAS_URL;
-      if (!url) {
-        throw new Error(targetUrl
-          ? 'AttendX-T backend not configured. Add its deployment URL to window.ATTEND_X_CONFIG.teacherGasUrl'
-          : 'GAS backend not configured. Add your deployment URL to window.ATTEND_X_CONFIG.gasUrl');
+    async function post(payload) {
+      if (!GAS_URL) {
+        throw new Error('GAS backend not configured. Add your deployment URL to window.ATTEND_X_CONFIG.gasUrl');
       }
 
       /*
@@ -3362,7 +3318,7 @@
        * method, which `fetch` does by default for 302. We also need
        * `redirect: 'follow'` explicitly so the browser follows the chain.
        */
-      const response = await fetch(url, {
+      const response = await fetch(GAS_URL, {
         method:      'POST',
         redirect:    'follow',
         headers:     { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -3446,36 +3402,6 @@
     const biometricLogin = ({ email, type, credentialId, descriptor }) =>
       post({ action: 'biometricLogin', email, type, credentialId, descriptor });
 
-    /*
-     * ── QR + Proximity Attendance (real-time sessions from AttendX-T) ──
-     * These mirror the createProximitySession / getProximitySessionStatus /
-     * closeProximitySession actions already wired up on the AttendX-T
-     * (teacher) side, giving the student app the matching read/verify half
-     * of the same flow described in the AttendX Proximity Attendance spec.
-     */
-
-    /**
-     * Fetch all currently ACTIVE proximity sessions the student could mark
-     * against. Called on a fast poll (see App.pollProximitySessions) since
-     * these sessions are short-lived (typically 5–15 minutes). This calls
-     * AttendX-T's backend directly — that's where sessions are created and
-     * live — not this app's own gasUrl.
-     */
-    const getActiveProximitySessions = ({ tenantId, institution, department, year, section } = {}) =>
-      post({ action: 'getActiveProximitySessions', tenantId, institution, department, year, section }, TEACHER_GAS_URL);
-
-    /**
-     * Submit attendance against a live proximity session. Sent to AttendX-T's
-     * backend (TEACHER_GAS_URL) since it holds the session's GPS/radius and
-     * is the authoritative source for the distance check — the frontend is
-     * never trusted to decide accept/reject on its own. On success, the
-     * caller (App.submitMarkAttendance) also writes a copy into this app's
-     * own backend (markAttendance, GAS_URL) so it shows up in the student's
-     * own history.
-     */
-    const submitProximityAttendance = (payload) =>
-      post({ action: 'submitProximityAttendance', ...payload }, TEACHER_GAS_URL);
-
     return {
       registerUser,
       loginUser,
@@ -3489,10 +3415,7 @@
       registerFaceDescriptor,
       verifyFaceDescriptor,
       biometricLogin,
-      getActiveProximitySessions,
-      submitProximityAttendance,
       isConfigured: () => !!GAS_URL,
-      isTeacherConfigured: () => !!TEACHER_GAS_URL,
     };
   })();
 
@@ -5094,7 +5017,7 @@
         }
       }
     }
-
+    
     /** STEP 1: Open the native Bluetooth device picker and connect to the chosen host. */
     async function scanForHost() {
       if (!supported()) {
@@ -5117,7 +5040,7 @@
         document.getElementById('bt-pair-device-name').textContent = chosen.name || 'Unnamed device';
         document.getElementById('bt-pair-device-sub').textContent  = 'Connecting…';
 
-        const server = await connectWithRetry(chosen);
+        const server = await chosen.gatt.connect();
 
         pair.device = chosen;
         pair.server = server;
@@ -5304,17 +5227,6 @@
     /* PWA install event — captured before user gestures are required */
     let deferredInstallPrompt = null;
 
-    /* ── Live Proximity Session (real-time, from AttendX-T) ──────────
-       Holds the currently active teacher-created QR+Proximity session
-       (if any) that this student is eligible to mark against. Populated
-       by pollProximitySessions() and consumed by the Mark Attendance
-       modal. This is purely additive — manual Mark Attendance keeps
-       working exactly as before when no live session is present. */
-    let activeProximitySession = null;   // { sessionId, subjectCode, className, title, teacherName, lat, lng, radiusMeters, maxAccuracyMeters, expiresAt, requireQRCodeScan, ... }
-    let proximitySessionPollInt = null;
-    let useLiveSessionForSubmit = false; // whether the Mark Attendance form is currently bound to activeProximitySession
-    let _geofenceBeforeSession  = undefined; // caches GPS geofence in place before a live session overrides it
-
     /**
      * Main app initialisation.
      * Called once on page load after the DOM is ready.
@@ -5427,7 +5339,6 @@
       if (type === 'BG_SESSION_CHECK') {
         // A live session may have started — refresh session banner
         checkLiveSession();
-        pollProximitySessions();
       }
     }
 
@@ -5451,134 +5362,7 @@
       document.getElementById('ma-time-start').value  = '';
       document.getElementById('ma-time-end').value    = '';
       document.getElementById('ma-error').style.display = 'none';
-
-      // Re-check for a live session every time the modal opens, then
-      // reflect whatever is currently known (pollProximitySessions runs
-      // continuously in the background — see startSessionPoll()).
-      renderLiveSessionCard();
       UI.openModal('modal-mark-attendance');
-    }
-
-    /**
-     * Reflect the current activeProximitySession (if any) in the Mark
-     * Attendance modal: show/hide the live-session card and, when a
-     * session is present, default the form to it.
-     */
-    function renderLiveSessionCard() {
-      const card = document.getElementById('ma-live-session-card');
-      if (!card) return;
-
-      if (!activeProximitySession) {
-        card.style.display = 'none';
-        useLiveSessionForSubmit = false;
-        return;
-      }
-
-      const s = activeProximitySession;
-      document.getElementById('ma-live-session-title').textContent =
-        `${s.subjectCode || s.className || s.title || 'Live Class'}${s.title && s.title !== s.className ? ' — ' + s.title : ''}`;
-      document.getElementById('ma-live-session-meta').textContent =
-        `${s.teacherName ? s.teacherName + ' · ' : ''}within ${s.radiusMeters}m of teacher's location`;
-      card.style.display = '';
-
-      const checkbox = document.getElementById('ma-use-live-session');
-      if (checkbox) checkbox.checked = true;
-      toggleUseLiveSession(true);
-      updateLiveSessionTimer();
-    }
-
-    /**
-     * Bind (or unbind) the Mark Attendance form to the active live
-     * session. When bound: subject + time are locked to the session and
-     * the GPS geofence target switches to the teacher's captured
-     * location/radius for this submission only. When unbound: the form
-     * reverts to fully manual entry, exactly as it worked before this
-     * feature existed, and the geofence reverts to the institution's
-     * configured location.
-     */
-    function toggleUseLiveSession(useSession) {
-      useLiveSessionForSubmit = !!useSession && !!activeProximitySession;
-      const subjectSel  = document.getElementById('ma-subject');
-      const timeStart    = document.getElementById('ma-time-start');
-      const timeEnd       = document.getElementById('ma-time-end');
-
-      if (useLiveSessionForSubmit) {
-        const s = activeProximitySession;
-        // Try to match the session's subject code to a real dropdown
-        // option so the rest of the app (history, reports) sees a
-        // familiar subject value; fall back to the raw label otherwise.
-        const match = Array.from(subjectSel.options).find(o => o.value === s.subjectCode);
-        if (match) {
-          subjectSel.value = s.subjectCode;
-        } else if (s.subjectCode) {
-          // No matching timetable entry — inject a temporary option so
-          // the live session's own subject label is still submitted.
-          let liveOpt = subjectSel.querySelector('option[data-live="1"]');
-          if (!liveOpt) {
-            liveOpt = document.createElement('option');
-            liveOpt.dataset.live = '1';
-            subjectSel.insertBefore(liveOpt, subjectSel.firstChild.nextSibling);
-          }
-          liveOpt.value = s.subjectCode;
-          liveOpt.textContent = `${s.subjectCode} (live session)`;
-          subjectSel.value = s.subjectCode;
-        }
-        timeStart.value = s.lectureStart || nowPlusMinutes(0);
-        timeEnd.value    = s.lectureEnd   || nowPlusMinutes(Math.round((new Date(s.expiresAt) - Date.now()) / 60000));
-        subjectSel.disabled = true;
-        timeStart.disabled   = true;
-        timeEnd.disabled       = true;
-
-        // Point the GPS geofence at the teacher's captured location for
-        // the duration of this modal session; restored on close/submit.
-        // The prior geofence (institution default, or none) is cached so
-        // it can be restored exactly once the session flow ends.
-        if (s.lat != null && s.lng != null) {
-          if (_geofenceBeforeSession === undefined) _geofenceBeforeSession = GPS.getGeofence();
-          GPS.setGeofence({ lat: s.lat, lng: s.lng, radius: s.radiusMeters, name: s.subjectCode || s.className || 'Live session' });
-        }
-      } else {
-        subjectSel.disabled = false;
-        timeStart.disabled   = false;
-        timeEnd.disabled       = false;
-        const liveOpt = subjectSel.querySelector('option[data-live="1"]');
-        if (liveOpt && subjectSel.value === liveOpt.value) subjectSel.value = '';
-        if (liveOpt) liveOpt.remove();
-        if (_geofenceBeforeSession !== undefined) {
-          GPS.setGeofence(_geofenceBeforeSession);
-          _geofenceBeforeSession = undefined;
-        }
-      }
-    }
-
-    /** Close the Mark Attendance modal and unwind any live-session binding. */
-    function closeMarkAttendanceModal() {
-      const checkbox = document.getElementById('ma-use-live-session');
-      if (checkbox) checkbox.checked = false;
-      toggleUseLiveSession(false);
-      clearInterval(_liveSessionTimerInt);
-      UI.closeModal('modal-mark-attendance');
-    }
-
-    function nowPlusMinutes(mins) {
-      const d = new Date(Date.now() + mins * 60000);
-      return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    }
-
-    let _liveSessionTimerInt = null;
-    function updateLiveSessionTimer() {
-      clearInterval(_liveSessionTimerInt);
-      const el = document.getElementById('ma-live-session-timer');
-      if (!el) return;
-      const tick = () => {
-        if (!activeProximitySession) { clearInterval(_liveSessionTimerInt); return; }
-        const remain = new Date(activeProximitySession.expiresAt).getTime() - Date.now();
-        if (remain <= 0) { el.textContent = 'Expired'; clearInterval(_liveSessionTimerInt); renderLiveSessionCard(); return; }
-        const m = Math.floor(remain / 60000), sec = Math.floor((remain % 60000) / 1000);
-        el.textContent = `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')} left`;
-      };
-      tick();
-      _liveSessionTimerInt = setInterval(tick, 1000);
     }
 
     /**
@@ -5629,9 +5413,7 @@
           return;
         }
         if (!geo.isValid) {
-          errorEl.textContent = useLiveSessionForSubmit
-            ? `You are ${geo.distance}m from the teacher's location. Must be within ${geo.classLocation.radius}m of "${geo.classLocation.name}" to mark this live session.`
-            : `You are ${geo.distance}m from class. Must be within ${geo.classLocation.radius}m.`;
+          errorEl.textContent = `You are ${geo.distance}m from class. Must be within ${geo.classLocation.radius}m.`;
           errorEl.style.display = '';
           return;
         }
@@ -5729,56 +5511,12 @@
           deviceGUID:  localStorage.getItem('attendx_device_guid') || '',
           status:      'present',
           synced:      false,
-          // Live proximity session linkage (null for a fully manual mark) —
-          // lets the backend re-validate this attempt against the teacher's
-          // session (state, expiry, distance) and update its live counters.
-          sessionId:   useLiveSessionForSubmit ? (activeProximitySession?.sessionId || null) : null,
-          proximityMode: useLiveSessionForSubmit ? 'QR_PROXIMITY' : 'MANUAL',
         };
 
         // Step 5: Store — local-first, then sync to backend when online
         await DB.addRecord(record);
 
-        if (record.sessionId) {
-          // ── Live session flow ──────────────────────────────────────
-          // Authoritative validation happens on AttendX-T's backend (it
-          // owns the session's GPS/radius and live marked/accepted/
-          // rejected counters, polled by AttendX-T in real time). This
-          // app's own backend never decides accept/reject for a session.
-          if (!navigator.onLine || !GAS.isTeacherConfigured()) {
-            UI.setButtonLoading(btn, false);
-            errorEl.textContent = 'Cannot verify this live session while offline or before AttendX-T\'s backend URL is configured.';
-            errorEl.style.display = '';
-            return;
-          }
-          try {
-            const result = await GAS.submitProximityAttendance(record);
-            if (result && result.status === 'REJECTED') {
-              throw new Error(result.reason || 'Attendance rejected by the live session (out of range or session closed).');
-            }
-            record.synced = true;
-          } catch (syncErr) {
-            // Live-session attempts are rejected authoritatively by the
-            // backend — don't silently queue a rejected attempt as if it
-            // will succeed later; surface it and stop here.
-            UI.setButtonLoading(btn, false);
-            errorEl.textContent = syncErr.message || 'Could not verify this live session. Please try again.';
-            errorEl.style.display = '';
-            return;
-          }
-          // Best-effort: also log the accepted attempt in THIS app's own
-          // backend so it appears in the student's own attendance history
-          // (separate Sheet from AttendX-T's). A failure here doesn't undo
-          // the already-accepted session mark — just queue it for later.
-          if (navigator.onLine && GAS.isConfigured()) {
-            try { await GAS.markAttendance(record); }
-            catch { await DB.addToQueue(record); }
-          } else if (GAS.isConfigured()) {
-            await DB.addToQueue(record);
-          }
-          await DB.addRecord(record); // update synced flag
-        } else if (navigator.onLine && GAS.isConfigured()) {
-          // ── Manual flow (unchanged) ─────────────────────────────────
+        if (navigator.onLine && GAS.isConfigured()) {
           try {
             await GAS.markAttendance(record);
             record.synced = true;
@@ -5814,12 +5552,10 @@
 
         document.getElementById('btn-checkout').classList.add('visible');
 
-        closeMarkAttendanceModal();
+        UI.closeModal('modal-mark-attendance');
 
         Toast.show(
-          record.sessionId
-            ? 'Attendance verified against the live session and marked!'
-            : (record.synced ? 'Attendance marked and synced!' : 'Attendance marked (saved locally, will sync when online)'),
+          record.synced ? 'Attendance marked and synced!' : 'Attendance marked (saved locally, will sync when online)',
           record.synced ? 'success' : 'warning'
         );
 
@@ -6073,17 +5809,10 @@
       update(); // Check immediately
     }
 
-    /** Poll for live class sessions (legacy window banner) and, at a
-     *  faster cadence, real-time QR+Proximity sessions broadcast live
-     *  from AttendX-T (these expire in minutes, so they need a tighter
-     *  poll than the legacy attendance-window check). */
+    /** Poll for live class sessions */
     function startSessionPoll() {
       checkLiveSession(); // Immediately
       setInterval(checkLiveSession, 2 * 60 * 1000); // Every 2 minutes
-
-      pollProximitySessions(); // Immediately
-      clearInterval(proximitySessionPollInt);
-      proximitySessionPollInt = setInterval(pollProximitySessions, 20 * 1000); // Every 20s
     }
 
     /** Fetch and display live session status */
@@ -6097,68 +5826,11 @@
           document.getElementById('session-label').textContent =
             `${session.courseName} — Attendance window open (closes in ${session.minutesLeft} min)`;
           banner.classList.add('visible');
-        } else if (!activeProximitySession) {
+        } else {
           banner.classList.remove('visible');
         }
       } catch {
         // Session check failing silently is acceptable
-      }
-    }
-
-    /**
-     * Poll the backend for any currently ACTIVE QR+Proximity session
-     * created from AttendX-T that this student is eligible to mark
-     * against, and keep the live-session banner / Mark Attendance modal
-     * in sync with it in real time. Runs continuously in the background
-     * (see startSessionPoll) so a teacher starting a session shows up
-     * for students within ~20 seconds without any manual refresh.
-     */
-    async function pollProximitySessions() {
-      if (!GAS.isTeacherConfigured() || !navigator.onLine) return;
-      try {
-        const user = Auth.getUser() || await DB.getUser();
-        if (!user) return;
-
-        const res = await GAS.getActiveProximitySessions({
-          tenantId:    user.tenantId,
-          institution: user.institution,
-          department:  user.department,
-          year:        user.year,
-          section:     user.section,
-        });
-
-        const sessions = Array.isArray(res) ? res : (res?.sessions || []);
-        // Prefer a session whose subjectCode matches something in this
-        // student's timetable dropdown; otherwise just take the soonest-
-        // expiring active one so it's still visible/usable.
-        const subjectCodes = Array.from(document.querySelectorAll('#ma-subject option'))
-          .map(o => o.value).filter(Boolean);
-        let next = sessions.find(s => subjectCodes.includes(s.subjectCode)) || sessions[0] || null;
-
-        const wasActive = !!activeProximitySession;
-        const prevId    = activeProximitySession?.sessionId;
-        activeProximitySession = next || null;
-
-        const banner = document.getElementById('banner-session');
-        if (activeProximitySession) {
-          const s = activeProximitySession;
-          const minutesLeft = Math.max(0, Math.round((new Date(s.expiresAt) - Date.now()) / 60000));
-          document.getElementById('session-label').textContent =
-            `${s.subjectCode || s.className || s.title} — live now, ${s.teacherName ? 'by ' + s.teacherName + ', ' : ''}closes in ${minutesLeft} min`;
-          banner.classList.add('visible');
-        } else if (wasActive) {
-          banner.classList.remove('visible');
-        }
-
-        // If the Mark Attendance modal is currently open, keep it in sync
-        // (e.g. a new session just went live, or the one being used just
-        // expired/closed on the teacher's side).
-        const modal = document.getElementById('modal-mark-attendance');
-        if (modal?.classList.contains('visible') && (prevId !== activeProximitySession?.sessionId)) {
-          renderLiveSessionCard();
-        }
-      } catch {
-        // Silent — the live-session banner simply won't update this cycle.
       }
     }
 
@@ -6287,8 +5959,6 @@
     return {
       init,
       openMarkAttendanceModal,
-      closeMarkAttendanceModal,
-      toggleUseLiveSession,
       onSubjectChange,
       submitMarkAttendance,
       markCheckout,
@@ -6301,7 +5971,6 @@
       toggleNotifications,
       clearLocalData,
       checkLiveSession,
-      pollProximitySessions,
       renderFaceQueue,
     };
   })();
