@@ -4854,8 +4854,8 @@
      * whatever the host implementation uses — they just need to be
      * identical on both ends.
      */
-    const ATTEND_SERVICE_UUID = 'a07498ca-ad5b-474e-940d-16f1fbe7e8cd';
-    const ATTEND_CHAR_UUID    = '51ff12bb-3ed8-46e5-b4f9-d64e2fec021b';
+    const ATTEND_SERVICE_UUID = '8ce255c0-200a-11e0-ac64-0800200c9a66'; // must match the APK's GATT service exactly
+    const ATTEND_CHAR_UUID    = '8ce255c1-200a-11e0-ac64-0800200c9a66'; // must match the APK's writable characteristic
     const BLE_CHUNK_SIZE      = 20; // conservative default BLE MTU payload size
 
     let pair = {
@@ -5171,26 +5171,39 @@
         }
       }
 
-      const payload = {
-        roll: pair.roll,
-        name: pair.name,
-        faceVerified: pair.faceVerified,
-        faceDistance: pair.faceDistance,
-        deviceGuid: localStorage.getItem('attendx_device_guid') || null,
-        ts: Date.now(),
-      };
+      // const payload = {
+      //   roll: pair.roll,
+      //   name: pair.name,
+      //   faceVerified: pair.faceVerified,
+      //   faceDistance: pair.faceDistance,
+      //   deviceGuid: localStorage.getItem('attendx_device_guid') || null,
+      //   ts: Date.now(),
+      // };
+
+      // sendBtn.disabled = true;
+      // statusEl.textContent = 'Sending…';
+
+      // try {
+      //   const bytes = new TextEncoder().encode(JSON.stringify(payload));
+      //   // Write in small chunks — most BLE stacks cap a single write
+      //   // around ~20 bytes unless both sides negotiate a larger MTU.
+      //   for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
+      //     const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
+      //     await pair.characteristic.writeValue(chunk);
+      //   }
+      //This is Replaced by codes below, but may be implemented later (not Obselete)
+
+      // The host APK's GATT server expects a single plain-text write in the
+      // form "name|roll|mac" — not JSON, and not chunked.
+      const hostMac = pair.device?.id || '00:00:00:00:00:00';
+      const payloadString = `${pair.name}|${pair.roll}|${hostMac}`;
 
       sendBtn.disabled = true;
       statusEl.textContent = 'Sending…';
 
       try {
-        const bytes = new TextEncoder().encode(JSON.stringify(payload));
-        // Write in small chunks — most BLE stacks cap a single write
-        // around ~20 bytes unless both sides negotiate a larger MTU.
-        for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
-          const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
-          await pair.characteristic.writeValue(chunk);
-        }
+        const dataBuffer = new TextEncoder().encode(payloadString);
+        await pair.characteristic.writeValueWithResponse(dataBuffer);
         statusEl.textContent = 'Attendance sent to host device ✓';
         Toast.show('Attendance sent over Bluetooth', 'success');
 
