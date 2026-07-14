@@ -5033,8 +5033,8 @@
           // Show every nearby device — the host may not advertise our
           // service UUID directly, so we filter by presence of the
           // service only as an optional (not required) hint.
-          acceptAllDevices: true,
-          optionalServices: [ATTEND_SERVICE_UUID, 'battery_service'],
+          filters: [{ services: [ATTEND_SERVICE_UUID] }],
+          optionalServices: ['battery_service'],
         });
 
         document.getElementById('bt-pair-device-name').textContent = chosen.name || 'Unnamed device';
@@ -5195,6 +5195,7 @@
 
       // The host APK's GATT server expects a single plain-text write in the
       // form "name|roll|mac" — not JSON, and not chunked.
+      
       const hostMac = pair.device?.id || '00:00:00:00:00:00';
       const payloadString = `${pair.name}|${pair.roll}|${hostMac}`;
 
