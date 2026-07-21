@@ -3541,9 +3541,13 @@
         if (!onFrame) captureBtn.disabled = false;
 
         detecting = true;
-        const loop = async () => {
+        let lastDetectTime = 0;
+        const DETECT_INTERVAL_MS = 300; // run face detection ~3x/sec, not every frame
+
+        const loop = async (timestamp = 0) => {
           if (!detecting) return;
-          if (onFrame) {
+          if (onFrame && (timestamp - lastDetectTime >= DETECT_INTERVAL_MS)) {
+            lastDetectTime = timestamp;
             try {
               const result = await onFrame(videoEl);
               if (result) {
@@ -3558,9 +3562,9 @@
               /* model still loading or a transient detection error — keep looping */
             }
           }
-          rafId = requestAnimationFrame(() => loop());
+          rafId = requestAnimationFrame(loop);
         };
-        loop();
+        rafId = requestAnimationFrame(loop);
 
         captureBtn.onclick = () => {
           const canvas = document.createElement('canvas');
@@ -3610,8 +3614,15 @@
     }
 
     /** Run detection + landmarks + descriptor extraction on a video/image frame. */
-    async function detect(mediaEl) {
-      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+    async function detect(mediaEl, { light = false } = {}) {
+      const options = new faceapi.TinyFaceDetectorOptions({
+        inputSize: light ? 160 : 224,
+        scoreThreshold: 0.5,
+      });
+      if (light) {
+        // Live preview loop: just check "is a face there", skip landmarks/descriptor
+        return faceapi.detectSingleFace(mediaEl, options);
+      }
       return faceapi
         .detectSingleFace(mediaEl, options)
         .withFaceLandmarks()
@@ -3633,15 +3644,17 @@
      */
     async function captureDescriptor(title) {
       await loadModels();
-      const { dataUrl, result } = await FaceCam.open({
+      const { video, canvas, result } = await FaceCam.open({
         title,
         onFrame: async (video) => {
-          const r = await detect(video);
-          return r ? r.descriptor : null;
+          const r = await detect(video, { light: true });
+          return r ? true : null; // just a presence flag during live preview
         },
       });
-      if (!result) throw new Error('No face detected — please try again in better lighting.');
-      return { descriptor: Array.from(result), dataUrl };
+      // Now run the full (landmarks + descriptor) pass once, on the captured frame
+      const full = await detect(canvas, { light: false });
+      if (!full) throw new Error('No face detected — please try again in better lighting.');
+      return { descriptor: Array.from(full.descriptor), dataUrl: canvas.toDataURL('image/jpeg', 0.8) };
     }
 
     /**
