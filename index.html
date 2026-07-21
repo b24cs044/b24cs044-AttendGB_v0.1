@@ -5307,6 +5307,7 @@
       _applyAutoSyncUI(); // Restore saved auto-sync preference pill state
 
       // Set up PWA install prompt
+      // Set up PWA install prompt (Chromium browsers: Chrome, Edge, Samsung Internet)
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredInstallPrompt = e;
@@ -5314,6 +5315,22 @@
         const ps = document.getElementById('profile-install-section');
         if (ps) ps.style.display = '';
       });
+
+      // iOS Safari never fires 'beforeinstallprompt' — show manual instructions instead
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isInStandaloneMode = window.navigator.standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches;
+
+      if (isIOS && !isInStandaloneMode) {
+        const banner = document.getElementById('install-prompt');
+        const sub    = banner?.querySelector('.install-text-sub');
+        const btn    = document.getElementById('btn-install-app');
+        if (sub) sub.textContent = 'Tap Share, then "Add to Home Screen"';
+        if (btn) btn.style.display = 'none'; // no programmatic install on iOS
+        banner?.classList.add('visible');
+        const ps = document.getElementById('profile-install-section');
+        if (ps) ps.style.display = '';
+      }
 
       // Listen for service worker messages
       if (navigator.serviceWorker) {

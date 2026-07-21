@@ -36,7 +36,7 @@
  * Increment CACHE_VERSION whenever you change any cached asset.
  * Old caches are deleted in the 'activate' phase.
  */
-const CACHE_VERSION   = 'v1';
+const CACHE_VERSION   = 'v2';
 const CACHE_APP_SHELL = `attendx-shell-${CACHE_VERSION}`;
 const CACHE_DYNAMIC   = `attendx-dynamic-${CACHE_VERSION}`;
 
@@ -47,7 +47,6 @@ const CACHE_DYNAMIC   = `attendx-dynamic-${CACHE_VERSION}`;
 const APP_SHELL_URLS = [
   '/',
   '/index.html',
-  '/config.js',
   '/manifest.json',
   /* Google Fonts are network-first; we cache them dynamically */
 ];
@@ -72,18 +71,16 @@ self.addEventListener('install', (event) => {
 
   event.waitUntil(
     caches.open(CACHE_APP_SHELL)
-      .then((cache) => cache.addAll(APP_SHELL_URLS))
-      .then(() => {
-        /**
-         * Skip waiting forces this SW to become active immediately,
-         * even if older pages are still open.  Prevents users from
-         * running a mixture of old and new code.
-         */
-        return self.skipWaiting();
-      })
-      .catch((err) => {
-        console.error('[SW] Install / pre-cache failed:', err);
-      })
+      .then((cache) =>
+        Promise.all(
+          APP_SHELL_URLS.map((url) =>
+            cache.add(url).catch((err) =>
+              console.warn('[SW] Skipped precaching', url, err)
+            )
+          )
+        )
+      )
+      .then(() => self.skipWaiting())
   );
 });
 
