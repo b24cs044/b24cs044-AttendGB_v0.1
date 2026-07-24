@@ -991,6 +991,70 @@
 
     .icon-btn svg { width: 18px; height: 18px; }
 
+    /* ── Notice Board (read-only) — preview card on Home ─────────────── */
+    .notices-home-card {
+      margin: 0 var(--sp-5) var(--sp-4);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-4) var(--sp-5);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .notices-home-card:hover { border-color: var(--color-primary); }
+    .notices-home-card .nh-icon {
+      width: 40px; height: 40px; border-radius: var(--radius-md);
+      background: var(--color-primary-glow); color: #818CF8;
+      display: grid; place-items: center; flex-shrink: 0; position: relative;
+    }
+    .notices-home-card .nh-icon svg { width: 20px; height: 20px; }
+    .notices-home-card .nh-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: var(--color-danger); color: #fff;
+      font-size: 10px; font-weight: 700; min-width: 16px; height: 16px;
+      border-radius: var(--radius-full); display: grid; place-items: center; padding: 0 4px;
+    }
+    .notices-home-card .nh-body { flex: 1; min-width: 0; }
+    .notices-home-card .nh-title {
+      font-size: var(--text-sm); font-weight: 700; color: var(--color-text-primary);
+      margin-bottom: 2px;
+    }
+    .notices-home-card .nh-sub {
+      font-size: var(--text-xs); color: var(--color-text-secondary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .notices-home-card .nh-chevron { color: var(--color-text-muted); flex-shrink: 0; }
+    .notices-home-card .nh-chevron svg { width: 18px; height: 18px; }
+
+    /* ── Notice Board — full read-only list screen ───────────────────── */
+    #screen-notices { padding-bottom: var(--sp-5); }
+    .notice-list { padding: 0 var(--sp-5); }
+    .notice-list-item {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-4);
+      margin-bottom: var(--sp-3);
+    }
+    .notice-list-item.unread { border-left: 3px solid var(--color-primary); }
+    .notice-list-item-head {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-2);
+      margin-bottom: 6px;
+    }
+    .notice-list-item-title { font-size: var(--text-base); font-weight: 700; color: var(--color-text-primary); }
+    .notice-list-item-date { font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; }
+    .notice-list-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--sp-2); }
+    .notice-list-body { font-size: var(--text-sm); color: var(--color-text-secondary); white-space: pre-wrap; line-height: 1.55; margin-bottom: var(--sp-2); }
+    .notice-list-foot { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); font-size: var(--text-xs); color: var(--color-text-muted); }
+    .notice-attach-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      color: #818CF8; text-decoration: none; font-size: var(--text-xs); font-weight: 600;
+    }
+    .notice-attach-link:hover { text-decoration: underline; }
+
     /* ── THE SIGNATURE ELEMENT: Attendance Ring ────────────────────── */
     .ring-card {
       margin: 0 var(--sp-5) var(--sp-4);
@@ -2466,6 +2530,21 @@
         </div>
       </div>
 
+      <!-- Notice Board (read-only) — tap to view all notices -->
+      <div class="notices-home-card" onclick="Notices.openBoard()">
+        <div class="nh-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="nh-badge" id="nh-unread-badge" style="display:none;">0</span>
+        </div>
+        <div class="nh-body">
+          <div class="nh-title">Notice Board</div>
+          <div class="nh-sub" id="nh-latest-preview">No notices yet</div>
+        </div>
+        <div class="nh-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+
       <!-- Attendance Ring — THE SIGNATURE ELEMENT -->
       <div class="ring-card">
         <div class="ring-container">
@@ -2643,6 +2722,32 @@
           </svg>
           <div class="empty-state-title">No records yet</div>
           <div style="font-size:var(--text-sm);">Your attendance history will appear here after you mark attendance.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════
+         SCREEN: NOTICE BOARD (read-only)
+         ════════════════════════════════════════════════════════════ -->
+    <section class="screen" id="screen-notices" aria-label="Notice Board">
+      <button class="screen-back-btn" onclick="UI.showScreen('screen-home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Back
+      </button>
+
+      <div class="page-header">
+        <div class="page-header-title font-display">Notice Board</div>
+        <button class="btn-export" onclick="Notices.refresh()" aria-label="Refresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <div class="notice-list" id="notice-list">
+        <div class="empty-state" id="notice-list-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <div class="empty-state-title">No notices yet</div>
+          <div style="font-size:var(--text-sm);">Announcements posted by your institution will appear here.</div>
         </div>
       </div>
     </section>
@@ -3368,6 +3473,9 @@
     const getLiveSession = (userId, tenantId) =>
       post({ action: 'getLiveSession', userId, tenantId });
 
+    /** Fetch the notice board (read-only — posting happens from the Teacher/Admin app) */
+    const getNotices = () => post({ action: 'getNotices' });
+
     /**
      * Persist a WebAuthn (platform authenticator) credential ID for this
      * email so future fingerprint logins can be verified against the
@@ -3411,6 +3519,7 @@
       sendPasswordResetOTP,
       resetPassword,
       getLiveSession,
+      getNotices,
       registerBiometricCredential,
       registerFaceDescriptor,
       verifyFaceDescriptor,
@@ -5243,6 +5352,138 @@
 
   /*
    * ====================================================================
+   * MODULE: Notices — Read-only Notice Board.
+   * Fetches notices posted from the Teacher/Admin app via the shared
+   * backend. Students can only view — there is no post/edit/delete here.
+   * ====================================================================
+   */
+  const Notices = (() => {
+    const CACHE_KEY      = 'attendx_notices_cache';
+    const LAST_SEEN_KEY  = 'attendx_notices_last_seen';
+    let notices = [];
+    let loading = false;
+
+    function _loadCache() {
+      try { notices = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); } catch { notices = []; }
+    }
+
+    function _saveCache() {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(notices)); } catch {}
+    }
+
+    function _escHtml(v) {
+      return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function _fmtDateTime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' +
+             d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function _fmtDate(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    /** Initial load: paint from cache immediately, then refresh from server. */
+    async function init() {
+      _loadCache();
+      _renderHomePreview();
+      await refresh();
+    }
+
+    /** Re-fetch notices from the backend (safe to call repeatedly). */
+    async function refresh() {
+      if (loading || !navigator.onLine) return;
+      loading = true;
+      try {
+        const data = await GAS.getNotices();
+        notices = (data || []).slice().sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+        _saveCache();
+        _renderHomePreview();
+        if (document.getElementById('screen-notices')?.classList.contains('active')) _renderFullList();
+      } catch (err) {
+        console.warn('[Notices] refresh failed:', err.message);
+      } finally {
+        loading = false;
+      }
+    }
+
+    function _unreadCount() {
+      const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
+      if (!lastSeen) return notices.length;
+      return notices.filter(n => new Date(n.postedAt) > new Date(lastSeen)).length;
+    }
+
+    function _renderHomePreview() {
+      const badge   = document.getElementById('nh-unread-badge');
+      const preview = document.getElementById('nh-latest-preview');
+      if (!badge || !preview) return;
+
+      const count = _unreadCount();
+      if (count > 0) { badge.style.display = 'grid'; badge.textContent = count > 9 ? '9+' : String(count); }
+      else { badge.style.display = 'none'; }
+
+      preview.textContent = notices.length ? notices[0].topic : 'No notices yet';
+    }
+
+    function _renderFullList() {
+      const list  = document.getElementById('notice-list');
+      const empty = document.getElementById('notice-list-empty');
+      if (!list) return;
+
+      if (!notices.length) {
+        list.querySelectorAll('.notice-list-item').forEach(el => el.remove());
+        if (empty) empty.style.display = '';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+
+      const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
+      list.querySelectorAll('.notice-list-item').forEach(el => el.remove());
+
+      notices.forEach(n => {
+        const unread = !lastSeen || new Date(n.postedAt) > new Date(lastSeen);
+        const tags = [n.department, n.class, n.section].filter(t => t && t.trim() && t.trim().toLowerCase() !== 'all');
+        const durationTxt = (n.durationTo && n.durationTo !== n.durationFrom)
+          ? `${_fmtDate(n.durationFrom)} – ${_fmtDate(n.durationTo)}`
+          : (n.durationFrom ? _fmtDate(n.durationFrom) : '');
+
+        const item = document.createElement('div');
+        item.className = 'notice-list-item' + (unread ? ' unread' : '');
+        item.innerHTML = `
+          <div class="notice-list-item-head">
+            <span class="notice-list-item-title">${_escHtml(n.topic)}</span>
+            <span class="notice-list-item-date">${_fmtDateTime(n.postedAt)}</span>
+          </div>
+          ${tags.length ? `<div class="notice-list-tags">${tags.map(t => `<span class="badge badge-muted">${_escHtml(t)}</span>`).join('')}</div>` : ''}
+          <div class="notice-list-body">${_escHtml(n.description)}</div>
+          <div class="notice-list-foot">
+            <span>${durationTxt ? `📅 ${durationTxt}` : ''}${n.postedBy ? ` · ${_escHtml(n.postedBy)}` : ''}</span>
+            ${n.attachmentUrl ? `<a class="notice-attach-link" href="${n.attachmentUrl}" target="_blank" rel="noopener">📎 ${_escHtml(n.attachmentName || 'Attachment')}</a>` : ''}
+          </div>`;
+        list.appendChild(item);
+      });
+
+      localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
+      _renderHomePreview();
+    }
+
+    /** Open the full read-only notice list screen. */
+    function openBoard() {
+      UI.showScreen('screen-notices');
+      _renderFullList();
+      refresh();
+    }
+
+    return { init, refresh, openBoard };
+  })();
+
+
+  /*
+   * ====================================================================
    * MODULE: App — Core attendance actions and application logic
    * ====================================================================
    */
@@ -5303,6 +5544,9 @@
 
       // Load attendance stats and history from IndexedDB
       await loadAttendanceData();
+
+      // Load the read-only notice board (view-only for students)
+      Notices.init();
 
       // Render the rolling 3-photo face verification queue
       await renderFaceQueue();
