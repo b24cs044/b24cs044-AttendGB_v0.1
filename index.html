@@ -6434,14 +6434,22 @@
   const UI = (() => {
     /**
      * Show a specific screen by its ID and hide all others.
+     * Modified to support the History API for mobile back buttons.
      * @param {string} screenId - e.g. 'screen-login'
+     * @param {boolean} pushToHistory - Whether to push the state to browser history
      */
-    function showScreen(screenId) {
+    function showScreen(screenId, pushToHistory = true) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       const target = document.getElementById(screenId);
+      
       if (target) {
         target.classList.add('active');
         target.scrollTop = 0;
+
+        // Push state to history to support the mobile back button
+        if (pushToHistory) {
+          window.history.pushState({ screen: screenId }, '', '#' + screenId);
+        }
       }
     }
 
@@ -6618,6 +6626,36 @@
       if (lbl) { lbl.textContent = 'Enter a password to see strength'; lbl.style.color = 'var(--color-text-muted)'; }
       openModal('modal-change-password');
     }
+
+    /**
+     * Listen for hardware/mobile back button presses
+     */
+    window.addEventListener('popstate', (e) => {
+      let screenId = 'screen-login'; // Default fallback
+      
+      // Determine which screen we are navigating back to
+      if (e.state && e.state.screen) {
+        screenId = e.state.screen;
+      } else if (window.location.hash) {
+        screenId = window.location.hash.substring(1);
+      } else {
+        // Fallback: Check if user is logged in
+        const user = (typeof Auth !== 'undefined' && Auth.getUser) ? Auth.getUser() : null;
+        screenId = user ? 'screen-home' : 'screen-login';
+      }
+
+      // Show the screen WITHOUT pushing to history again to avoid infinite loops
+      showScreen(screenId, false);
+
+      // Ensure the bottom navigation bar active state is synced correctly
+      const tabName = screenId.replace('screen-', '');
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      
+      const activeNav = document.getElementById(`nav-${tabName}`);
+      if (activeNav) {
+        activeNav.classList.add('active');
+      }
+    });
     
     return {
       showScreen, navigate, togglePassword, updateStrengthMeter,
