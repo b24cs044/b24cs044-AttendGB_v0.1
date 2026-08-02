@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  AttendX — Biometric & GPS Attendance PWA                          ║
+  ║  AttendX — Bluetooth, Biometric & GPS Attendance PWA                          ║
   ║  Version: 1.0.0                                                     ║
   ║  Stack: Vanilla HTML5 / CSS3 / ES6+, WebAuthn, IndexedDB, GAS      ║
   ║  Deployment: Cloudflare Pages                                       ║
@@ -11,7 +11,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="AttendX — Smart biometric and GPS attendance for institutions." />
+  <meta name="description" content="AttendX — Smart Bluetooth, biometric and GPS attendance for institutions." />
 
   <!-- PWA / iOS meta tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -2052,70 +2052,12 @@
         <div class="subject-dropdown-wrap">
           <select class="form-input subject-select" id="ma-subject" onchange="App.onSubjectChange(this)">
             <option value="">— Select subject —</option>
-            <optgroup label="1st Year">
-              <option value="CS102" data-start="09:00" data-end="09:55">CS102</option>
-              <option value="CS104" data-start="10:00" data-end="10:55">CS104</option>
-            </optgroup>
-            <optgroup label="2nd Year (CS2xx)">
-              <option value="CS202" data-start="10:00" data-end="10:55">CS202</option>
-              <option value="CS204" data-start="09:00" data-end="09:55">CS204</option>
-              <option value="CS206" data-start="11:00" data-end="11:55">CS206</option>
-              <option value="CS208" data-start="10:00" data-end="10:55">CS208</option>
-              <option value="CS212" data-start="09:00" data-end="09:55">CS212</option>
-              <option value="CS252 (CSE Lab 1)" data-start="10:00" data-end="12:55">CS252 (CSE Lab 1)</option>
-              <option value="CS254" data-start="14:00" data-end="14:55">CS254</option>
-              <option value="CS256 (CSE Lab 1)" data-start="14:00" data-end="15:55">CS256 (CSE Lab 1)</option>
-              <option value="ME218" data-start="12:00" data-end="12:55">ME218</option>
-            </optgroup>
-            <optgroup label="3rd Year (CS3xx)">
-              <option value="CS302" data-start="14:00" data-end="14:55">CS302</option>
-              <option value="CS304" data-start="09:00" data-end="09:55">CS304</option>
-              <option value="CS312" data-start="09:00" data-end="09:55">CS312</option>
-              <option value="CS322" data-start="11:00" data-end="12:55">CS322</option>
-              <option value="CS352 (CSE Lab 1)" data-start="09:00" data-end="11:55">CS352 (CSE Lab 1)</option>
-              <option value="CS354 (CSE Lab 3)" data-start="10:00" data-end="12:55">CS354 (CSE Lab 3)</option>
-              <option value="CS382 (Minor Project)" data-start="15:00" data-end="15:55">CS382 (Minor Project)</option>
-            </optgroup>
-            <optgroup label="4th Year (CS4xx)">
-              <option value="CS402 (Project 2)" data-start="09:00" data-end="12:55">CS402 (Project 2)</option>
-              <option value="CS414 (NPTEL)" data-start="09:00" data-end="09:55">CS414 (NPTEL)</option>
-              <option value="CS418 (NPTEL)" data-start="09:00" data-end="09:55">CS418 (NPTEL)</option>
-            </optgroup>
-            <optgroup label="5th Year (CS5xx)">
-              <option value="CS502" data-start="10:00" data-end="10:55">CS502</option>
-              <option value="CS504" data-start="10:00" data-end="10:55">CS504</option>
-              <option value="CS506 (S&TRW)" data-start="11:00" data-end="12:55">CS506 (S&TRW)</option>
-              <option value="CS508 (Review Work)" data-start="15:00" data-end="15:55">CS508 (Review Work)</option>
-              <option value="CS510" data-start="11:00" data-end="11:55">CS510</option>
-              <option value="CS518" data-start="11:00" data-end="11:55">CS518</option>
-              <option value="CS556 (CSE Lab 3)" data-start="09:00" data-end="11:55">CS556 (CSE Lab 3)</option>
-              <option value="CS560 (CSE Lab 3)" data-start="15:00" data-end="17:55">CS560 (CSE Lab 3)</option>
-            </optgroup>
-            <optgroup label="6th Year (CS6xx)">
-              <option value="CS602 (Project 2)" data-start="09:00" data-end="12:55">CS602 (Project 2)</option>
-            </optgroup>
-            <optgroup label="CA Subjects">
-              <option value="CA402" data-start="16:00" data-end="16:55">CA402</option>
-              <option value="CA404" data-start="09:00" data-end="09:55">CA404</option>
-              <option value="CA406" data-start="10:00" data-end="10:55">CA406</option>
-              <option value="CA408" data-start="12:00" data-end="12:55">CA408</option>
-              <option value="CA452 (CSE Lab 3)" data-start="15:00" data-end="17:55">CA452 (CSE Lab 3)</option>
-              <option value="CA454 (CSE Lab 1)" data-start="14:00" data-end="15:55">CA454 (CSE Lab 1)</option>
-            </optgroup>
-            <optgroup label="HS Subjects">
-              <option value="HS394" data-start="15:00" data-end="15:55">HS394</option>
-              <option value="HS402" data-start="13:00" data-end="14:00">HS402</option>
-              <option value="HS492" data-start="12:00" data-end="12:55">HS492</option>
-              <option value="HS710" data-start="16:00" data-end="16:55">HS710</option>
-            </optgroup>
-            <optgroup label="Open Electives">
-              <option value="OE-I" data-start="14:00" data-end="14:55">OE-I</option>
-              <option value="OE-II" data-start="14:00" data-end="14:55">OE-II</option>
-            </optgroup>
+            <option value="__other__">Other / not listed (type manually)…</option>
           </select>
           <svg class="subject-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div style="font-size:10px; color:var(--color-text-muted); margin-top:4px;">Lecture time is auto-filled from the Spring 2026 routine. Adjust if needed.</div>
+        <input type="text" id="ma-subject-custom" class="form-input" placeholder="Type the subject name / code" style="display:none;margin-top:8px;"/>
+        <div style="font-size:10px; color:var(--color-text-muted); margin-top:4px;" id="ma-subject-hint">Lecture time is auto-filled where set by your institution. Adjust if needed.</div>
       </div>
 
       <div class="form-group">
@@ -3476,6 +3418,9 @@
     /** Fetch the notice board (read-only — posting happens from the Teacher/Admin app) */
     const getNotices = () => post({ action: 'getNotices' });
 
+    /** Fetch the subject catalogue set by the Teacher/Admin app (feeds the Mark Attendance dropdown) */
+    const getSubjects = () => post({ action: 'getSubjects' });
+
     /**
      * Persist a WebAuthn (platform authenticator) credential ID for this
      * email so future fingerprint logins can be verified against the
@@ -3520,6 +3465,7 @@
       resetPassword,
       getLiveSession,
       getNotices,
+      getSubjects,
       registerBiometricCredential,
       registerFaceDescriptor,
       verifyFaceDescriptor,
@@ -5484,6 +5430,114 @@
 
   /*
    * ====================================================================
+   * MODULE: SubjectCatalog — Subjects set by the Teacher/Admin app.
+   * Populates the "Subject / Course Code" dropdown in Mark Attendance,
+   * filtered to the logged-in student's own department/year/section
+   * (plus anything the admin tagged "All"). Falls back to a manual
+   * "Other" text field if the catalogue is empty or unreachable.
+   * ====================================================================
+   */
+  const SubjectCatalog = (() => {
+    const CACHE_KEY = 'attendx_subjects_cache';
+    let subjects = [];
+    let loading  = false;
+
+    function _loadCache() {
+      try { subjects = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); } catch { subjects = []; }
+    }
+
+    function _saveCache() {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(subjects)); } catch {}
+    }
+
+    function _matches(field, userValue) {
+      if (!field || !field.trim() || field.trim().toLowerCase() === 'all') return true;
+      if (!userValue) return false;
+      return String(field).trim().toLowerCase() === String(userValue).trim().toLowerCase();
+    }
+
+    /** Initial load: paint from cache immediately, then refresh from server. */
+    async function init() {
+      _loadCache();
+      _populateSelect();
+      await refresh();
+    }
+
+    async function refresh() {
+      if (loading || !navigator.onLine) return;
+      loading = true;
+      try {
+        const data = await GAS.getSubjects();
+        subjects = data || [];
+        _saveCache();
+        _populateSelect();
+      } catch (err) {
+        console.warn('[SubjectCatalog] refresh failed:', err.message);
+      } finally {
+        loading = false;
+      }
+    }
+
+    function _populateSelect() {
+      const sel = document.getElementById('ma-subject');
+      if (!sel) return;
+
+      const user = Auth.getUser?.() || {};
+      const mine = subjects.filter(s =>
+        _matches(s.department, user.department) &&
+        _matches(s.class, user.year) &&
+        _matches(s.section, user.section)
+      );
+
+      const currentValue = sel.value;
+      sel.innerHTML = '<option value="">— Select subject —</option>';
+
+      if (mine.length) {
+        // Group by department so a mixed-scope catalogue still reads cleanly.
+        const groups = {};
+        mine.forEach(s => {
+          const key = (!s.department || s.department.toLowerCase() === 'all') ? 'General' : s.department;
+          (groups[key] = groups[key] || []).push(s);
+        });
+        Object.keys(groups).sort().forEach(groupName => {
+          const og = document.createElement('optgroup');
+          og.label = groupName;
+          groups[groupName].forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.code;
+            opt.textContent = s.name ? `${s.code} — ${s.name}` : s.code;
+            if (s.lectureStart) opt.dataset.start = s.lectureStart;
+            if (s.lectureEnd)   opt.dataset.end   = s.lectureEnd;
+            og.appendChild(opt);
+          });
+          sel.appendChild(og);
+        });
+      }
+
+      const otherOpt = document.createElement('option');
+      otherOpt.value = '__other__';
+      otherOpt.textContent = 'Other / not listed (type manually)…';
+      sel.appendChild(otherOpt);
+
+      // Restore whatever the student had selected, if it still exists.
+      if (currentValue && [...sel.options].some(o => o.value === currentValue)) {
+        sel.value = currentValue;
+      }
+
+      const hint = document.getElementById('ma-subject-hint');
+      if (hint) {
+        hint.textContent = mine.length
+          ? 'Lecture time is auto-filled where set by your institution. Adjust if needed.'
+          : 'No subjects set for your class yet — choose "Other" and type it in manually.';
+      }
+    }
+
+    return { init, refresh };
+  })();
+
+
+  /*
+   * ====================================================================
    * MODULE: App — Core attendance actions and application logic
    * ====================================================================
    */
@@ -5547,6 +5601,9 @@
 
       // Load the read-only notice board (view-only for students)
       Notices.init();
+
+      // Load the subject catalogue set by the Teacher/Admin app
+      SubjectCatalog.init();
 
       // Render the rolling 3-photo face verification queue
       await renderFaceQueue();
@@ -5647,10 +5704,13 @@
       const dateInput = document.getElementById('ma-date');
       if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
       document.getElementById('ma-subject').value     = '';
+      document.getElementById('ma-subject-custom').value   = '';
+      document.getElementById('ma-subject-custom').style.display = 'none';
       document.getElementById('ma-time-start').value  = '';
       document.getElementById('ma-time-end').value    = '';
       document.getElementById('ma-error').style.display = 'none';
       UI.openModal('modal-mark-attendance');
+      SubjectCatalog.refresh();
     }
 
     /**
@@ -5659,7 +5719,17 @@
      * @param {HTMLSelectElement} sel
      */
     function onSubjectChange(sel) {
-      const opt   = sel.options[sel.selectedIndex];
+      const opt        = sel.options[sel.selectedIndex];
+      const customInput = document.getElementById('ma-subject-custom');
+
+      if (sel.value === '__other__') {
+        customInput.style.display = '';
+        customInput.focus();
+        return;
+      }
+      customInput.style.display = 'none';
+      customInput.value = '';
+
       const start = opt?.dataset?.start || '';
       const end   = opt?.dataset?.end   || '';
       if (start) document.getElementById('ma-time-start').value = start;
@@ -5676,7 +5746,10 @@
     async function submitMarkAttendance() {
       const btn        = document.getElementById('btn-ma-submit');
       const errorEl     = document.getElementById('ma-error');
-      const subject     = document.getElementById('ma-subject').value;
+      const subjectSel  = document.getElementById('ma-subject').value;
+      const subject     = subjectSel === '__other__'
+        ? document.getElementById('ma-subject-custom').value.trim()
+        : subjectSel;
       const date        = document.getElementById('ma-date').value;
       const timeStart   = document.getElementById('ma-time-start').value;
       const timeEnd     = document.getElementById('ma-time-end').value;
@@ -6434,22 +6507,14 @@
   const UI = (() => {
     /**
      * Show a specific screen by its ID and hide all others.
-     * Modified to support the History API for mobile back buttons.
      * @param {string} screenId - e.g. 'screen-login'
-     * @param {boolean} pushToHistory - Whether to push the state to browser history
      */
-    function showScreen(screenId, pushToHistory = true) {
+    function showScreen(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       const target = document.getElementById(screenId);
-      
       if (target) {
         target.classList.add('active');
         target.scrollTop = 0;
-
-        // Push state to history to support the mobile back button
-        if (pushToHistory) {
-          window.history.pushState({ screen: screenId }, '', '#' + screenId);
-        }
       }
     }
 
@@ -6626,36 +6691,6 @@
       if (lbl) { lbl.textContent = 'Enter a password to see strength'; lbl.style.color = 'var(--color-text-muted)'; }
       openModal('modal-change-password');
     }
-
-    /**
-     * Listen for hardware/mobile back button presses
-     */
-    window.addEventListener('popstate', (e) => {
-      let screenId = 'screen-login'; // Default fallback
-      
-      // Determine which screen we are navigating back to
-      if (e.state && e.state.screen) {
-        screenId = e.state.screen;
-      } else if (window.location.hash) {
-        screenId = window.location.hash.substring(1);
-      } else {
-        // Fallback: Check if user is logged in
-        const user = (typeof Auth !== 'undefined' && Auth.getUser) ? Auth.getUser() : null;
-        screenId = user ? 'screen-home' : 'screen-login';
-      }
-
-      // Show the screen WITHOUT pushing to history again to avoid infinite loops
-      showScreen(screenId, false);
-
-      // Ensure the bottom navigation bar active state is synced correctly
-      const tabName = screenId.replace('screen-', '');
-      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      
-      const activeNav = document.getElementById(`nav-${tabName}`);
-      if (activeNav) {
-        activeNav.classList.add('active');
-      }
-    });
     
     return {
       showScreen, navigate, togglePassword, updateStrengthMeter,
