@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  AttendX — Bluetooth, Biometric & GPS Attendance PWA                          ║
+  ║  AttendX — Biometric & GPS Attendance PWA                          ║
   ║  Version: 1.0.0                                                     ║
   ║  Stack: Vanilla HTML5 / CSS3 / ES6+, WebAuthn, IndexedDB, GAS      ║
   ║  Deployment: Cloudflare Pages                                       ║
@@ -11,7 +11,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="AttendX — Smart Bluetooth, biometric and GPS attendance for institutions." />
+  <meta name="description" content="AttendX — Smart biometric and GPS attendance for institutions." />
 
   <!-- PWA / iOS meta tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -333,6 +333,13 @@
     .form-input.error {
       border-color: var(--color-danger);
       box-shadow: 0 0 0 3px rgba(239,68,68,0.2);
+    }
+
+    .form-input:disabled {
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      cursor: not-allowed;
+      opacity: 0.85;
     }
 
     .form-error {
@@ -2057,7 +2064,7 @@
           <svg class="subject-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <input type="text" id="ma-subject-custom" class="form-input" placeholder="Type the subject name / code" style="display:none;margin-top:8px;"/>
-        <div style="font-size:10px; color:var(--color-text-muted); margin-top:4px;" id="ma-subject-hint">Lecture time is auto-filled where set by your institution. Adjust if needed.</div>
+        <div style="font-size:10px; color:var(--color-text-muted); margin-top:4px;" id="ma-subject-hint">Lecture time is locked to what your institution set for this subject.</div>
       </div>
 
       <div class="form-group">
@@ -2068,10 +2075,11 @@
       <div class="form-group">
         <label class="form-label">Lecture Time Interval</label>
         <div style="display:flex; align-items:center; gap: var(--sp-3);">
-          <input class="form-input" type="time" id="ma-time-start" style="flex:1" />
+          <input class="form-input" type="time" id="ma-time-start" style="flex:1" disabled />
           <span class="static-label">to</span>
-          <input class="form-input" type="time" id="ma-time-end" style="flex:1" />
+          <input class="form-input" type="time" id="ma-time-end" style="flex:1" disabled />
         </div>
+        <div style="font-size:10px; color:var(--color-text-muted); margin-top:4px;" id="ma-time-hint">Set by your institution for the selected subject.</div>
       </div>
 
       <div id="ma-error" style="display:none; color: var(--color-danger); font-size: var(--text-xs); margin-bottom: var(--sp-3);"></div>
@@ -5527,7 +5535,7 @@
       const hint = document.getElementById('ma-subject-hint');
       if (hint) {
         hint.textContent = mine.length
-          ? 'Lecture time is auto-filled where set by your institution. Adjust if needed.'
+          ? 'Lecture time is locked to what your institution set for this subject.'
           : 'No subjects set for your class yet — choose "Other" and type it in manually.';
       }
     }
@@ -5708,6 +5716,9 @@
       document.getElementById('ma-subject-custom').style.display = 'none';
       document.getElementById('ma-time-start').value  = '';
       document.getElementById('ma-time-end').value    = '';
+      document.getElementById('ma-time-start').disabled = true;
+      document.getElementById('ma-time-end').disabled   = true;
+      document.getElementById('ma-time-hint').textContent = 'Set by your institution for the selected subject.';
       document.getElementById('ma-error').style.display = 'none';
       UI.openModal('modal-mark-attendance');
       SubjectCatalog.refresh();
@@ -5719,21 +5730,46 @@
      * @param {HTMLSelectElement} sel
      */
     function onSubjectChange(sel) {
-      const opt        = sel.options[sel.selectedIndex];
-      const customInput = document.getElementById('ma-subject-custom');
+      const opt          = sel.options[sel.selectedIndex];
+      const customInput  = document.getElementById('ma-subject-custom');
+      const startInput   = document.getElementById('ma-time-start');
+      const endInput     = document.getElementById('ma-time-end');
+      const timeHint     = document.getElementById('ma-time-hint');
 
-      if (sel.value === '__other__') {
-        customInput.style.display = '';
-        customInput.focus();
+      if (!sel.value) {
+        // Nothing selected yet — keep the time fields locked and empty.
+        customInput.style.display = 'none';
+        startInput.value = ''; endInput.value = '';
+        startInput.disabled = true; endInput.disabled = true;
+        timeHint.textContent = 'Set by your institution for the selected subject.';
         return;
       }
+
+      if (sel.value === '__other__') {
+        // No institution-defined schedule exists for a manually-typed subject,
+        // so this is the one case the student is allowed to enter a time.
+        customInput.style.display = '';
+        customInput.focus();
+        startInput.value = ''; endInput.value = '';
+        startInput.disabled = false; endInput.disabled = false;
+        timeHint.textContent = 'This subject isn\u2019t in your institution\u2019s list — enter the lecture time yourself.';
+        return;
+      }
+
       customInput.style.display = 'none';
       customInput.value = '';
 
       const start = opt?.dataset?.start || '';
       const end   = opt?.dataset?.end   || '';
-      if (start) document.getElementById('ma-time-start').value = start;
-      if (end)   document.getElementById('ma-time-end').value   = end;
+      startInput.value = start;
+      endInput.value   = end;
+      // Locked either way — if the admin hasn't set a time for this subject
+      // yet, the student can't invent one; they need to ask the admin to add it.
+      startInput.disabled = true;
+      endInput.disabled   = true;
+      timeHint.textContent = (start && end)
+        ? `Locked to ${start}\u2013${end} as set by your institution.`
+        : 'No lecture time has been set for this subject yet \u2014 ask your teacher/admin to add one.';
     }
 
     /**
@@ -5743,6 +5779,50 @@
      * details + subject + timestamp + location + photo) locally — synced
      * to the cloud later when online.
      */
+    // A student can check in a little before the lecture starts, and still
+    // check in briefly after it ends (for stragglers) — tune as needed.
+    const ATTENDANCE_EARLY_GRACE_MIN = 10;
+    const ATTENDANCE_LATE_GRACE_MIN  = 10;
+
+    /** Format a Date as 'HH:MM' for error messages. */
+    function _formatHM(d) {
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    /**
+     * Checks whether "now" falls within the lecture's attendance window
+     * (with grace periods either side). Only meaningful for subjects with
+     * an admin-set schedule — the "Other" fallback has no window to enforce.
+     */
+    function isWithinLectureWindow(dateStr, startStr, endStr) {
+      try {
+        const [sh, sm] = startStr.split(':').map(Number);
+        const [eh, em] = endStr.split(':').map(Number);
+
+        const lectureStart = new Date(dateStr + 'T00:00:00');
+        lectureStart.setHours(sh, sm, 0, 0);
+        const lectureEnd = new Date(dateStr + 'T00:00:00');
+        lectureEnd.setHours(eh, em, 0, 0);
+
+        const windowStart = new Date(lectureStart.getTime() - ATTENDANCE_EARLY_GRACE_MIN * 60000);
+        const windowEnd   = new Date(lectureEnd.getTime() + ATTENDANCE_LATE_GRACE_MIN * 60000);
+        const now = new Date();
+
+        if (now < windowStart) {
+          return { ok: false, message: `Too early — this lecture starts at ${startStr}. You can mark attendance from ${_formatHM(windowStart)}.` };
+        }
+        if (now > windowEnd) {
+          return { ok: false, message: `Attendance window closed — this lecture ended at ${endStr} (window closed ${_formatHM(windowEnd)}).` };
+        }
+        return { ok: true };
+      } catch (err) {
+        // If the schedule is malformed for any reason, fail open rather than
+        // silently blocking every student from marking attendance.
+        console.warn('[Attendance] window check skipped:', err.message);
+        return { ok: true };
+      }
+    }
+
     async function submitMarkAttendance() {
       const btn        = document.getElementById('btn-ma-submit');
       const errorEl     = document.getElementById('ma-error');
@@ -5759,6 +5839,17 @@
       if (!subject) { errorEl.textContent = 'Please enter the subject name or code.'; errorEl.style.display = ''; return; }
       if (!date)    { errorEl.textContent = 'Please select a date.'; errorEl.style.display = ''; return; }
       if (!timeStart || !timeEnd) { errorEl.textContent = 'Please enter the lecture start and end time.'; errorEl.style.display = ''; return; }
+
+      // Enforce the lecture's attendance window — only for subjects with an
+      // institution-set schedule; "Other" has no authoritative window.
+      if (subjectSel !== '__other__') {
+        const windowCheck = isWithinLectureWindow(date, timeStart, timeEnd);
+        if (!windowCheck.ok) {
+          errorEl.textContent = windowCheck.message;
+          errorEl.style.display = '';
+          return;
+        }
+      }
 
       UI.setButtonLoading(btn, true, 'Verifying…');
 
