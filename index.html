@@ -45,11 +45,11 @@
       --color-base:        #0A1628;   /* Deep navy — app background */
       --color-surface:     #111E35;   /* Slightly lighter — cards */
       --color-surface-2:   #1A2D4A;   /* Hover / elevated surfaces */
-      --color-border:      #1F3355;   /* Subtle borders */
+      --color-border:      #2A4066;   /* Borders — brightened for clearer separation */
 
       /* Brand accent */
       --color-primary:     #4F46E5;   /* Electric indigo — CTAs, active states */
-      --color-primary-glow:#4F46E533; /* Primary with 20% opacity for glows */
+      --color-primary-glow:#4F46E533; /* Primary with 20% opacity — shadows/rings ONLY, never fills */
 
       /* Semantic status colours */
       --color-success:     #10B981;   /* Emerald — Present */
@@ -57,10 +57,21 @@
       --color-danger:      #EF4444;   /* Crimson — Absent / Error */
       --color-info:        #3B82F6;   /* Blue — Informational */
 
+      /* Solid tint backgrounds for icon badges/chips/buttons — replaces
+         low-opacity rgba fills with real, non-transparent colours so
+         every surface reads clearly against whatever sits behind it. */
+      --tint-primary:        #232A5C;
+      --tint-primary-strong: #2E3775;
+      --tint-success:        #0F3B2E;
+      --tint-warning:        #4A3410;
+      --tint-danger:         #4A2020;
+      --tint-info:           #17324F;
+      --tint-neutral:        #24365A;
+
       /* Typography */
       --color-text-primary:   #F8FAFC;
       --color-text-secondary: #94A3B8;
-      --color-text-muted:     #475569;
+      --color-text-muted:     #7487A3;
 
       /* Spacing scale (4px base) */
       --sp-1: 4px;
@@ -112,11 +123,19 @@
       --color-base:        #F0F4FF;
       --color-surface:     #FFFFFF;
       --color-surface-2:   #E8EDF8;
-      --color-border:      #CBD5E1;
+      --color-border:      #B9C4D6;
       --color-text-primary:   #0F172A;
       --color-text-secondary: #475569;
-      --color-text-muted:     #94A3B8;
+      --color-text-muted:     #64748B;
       --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+
+      --tint-primary:        #E2E1FB;
+      --tint-primary-strong: #CBC9F6;
+      --tint-success:        #D7F5E8;
+      --tint-warning:        #FCEBC8;
+      --tint-danger:         #FBDEDE;
+      --tint-info:           #DCEBFD;
+      --tint-neutral:        #E8EDF8;
     }
 
     /* ================================================================
@@ -175,6 +194,8 @@
       flex: 1;
       overflow-y: auto;
       padding-top: var(--safe-top);
+      /* Reserve space so the fixed bottom nav never covers the last bit of content */
+      padding-bottom: calc(72px + var(--safe-bottom));
       /* Smooth scroll with momentum on iOS */
       -webkit-overflow-scrolling: touch;
     }
@@ -487,15 +508,15 @@
     }
 
     .banner-queue {
-      background: rgba(245, 158, 11, 0.15);
-      border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+      background: var(--tint-warning);
+      border-bottom: 1px solid var(--color-warning);
       color: var(--color-warning);
     }
 
     .banner-session {
-      background: rgba(79, 70, 229, 0.15);
-      border-bottom: 1px solid rgba(79, 70, 229, 0.3);
-      color: #818CF8;
+      background: var(--tint-primary);
+      border-bottom: 1px solid var(--color-primary);
+      color: var(--color-primary);
     }
 
     .banner-dot {
@@ -517,10 +538,12 @@
        ================================================================ */
     #bottom-nav {
       display: none;             /* Hidden on auth screens */
-      position: sticky;
+      position: fixed;           /* Always pinned to the viewport bottom, independent of scroll */
       bottom: 0;
       left: 0;
       right: 0;
+      max-width: 480px;          /* Match #app's phone-width cap */
+      margin: 0 auto;
       background: var(--color-surface);
       border-top: 1px solid var(--color-border);
       padding-bottom: var(--safe-bottom);
@@ -610,10 +633,10 @@
       text-transform: uppercase;
     }
 
-    .badge-success { background: rgba(16,185,129,0.15); color: var(--color-success); }
-    .badge-warning { background: rgba(245,158,11,0.15); color: var(--color-warning); }
-    .badge-danger  { background: rgba(239,68,68,0.15);  color: var(--color-danger); }
-    .badge-info    { background: rgba(79,70,229,0.15);  color: #818CF8; }
+    .badge-success { background: var(--tint-success); color: var(--color-success); }
+    .badge-warning { background: var(--tint-warning); color: var(--color-warning); }
+    .badge-danger  { background: var(--tint-danger);  color: var(--color-danger); }
+    .badge-info    { background: var(--tint-primary); color: var(--color-primary); }
     .badge-muted   { background: var(--color-surface-2); color: var(--color-text-secondary); }
 
     /* ================================================================
@@ -750,7 +773,7 @@
     .btn-biometric:hover {
       border-color: var(--color-primary);
       color: var(--color-primary);
-      background: var(--color-primary-glow);
+      background: var(--tint-primary);
     }
 
     .auth-footer {
@@ -1014,7 +1037,7 @@
     .notices-home-card:hover { border-color: var(--color-primary); }
     .notices-home-card .nh-icon {
       width: 40px; height: 40px; border-radius: var(--radius-md);
-      background: var(--color-primary-glow); color: #818CF8;
+      background: var(--tint-primary); color: var(--color-primary);
       display: grid; place-items: center; flex-shrink: 0; position: relative;
     }
     .notices-home-card .nh-icon svg { width: 20px; height: 20px; }
@@ -1190,7 +1213,7 @@
       width: 40px;
       height: 40px;
       border-radius: var(--radius-md);
-      background: rgba(79,70,229,0.12);
+      background: var(--tint-primary);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1268,14 +1291,14 @@
       font-size: 10px;
       font-weight: 700;
       color: var(--color-primary);
-      background: var(--color-primary-glow);
+      background: var(--tint-primary);
       border-radius: var(--radius-full);
       padding: 5px 10px;
       flex-shrink: 0;
       text-decoration: none;
       transition: background var(--transition-fast);
     }
-    .gps-maps-btn:hover { background: rgba(79,70,229,0.28); }
+    .gps-maps-btn:hover { background: var(--tint-primary-strong); }
 
     /* ── History paired item (check-in + check-out on one card) ───── */
     .history-item {
@@ -1342,20 +1365,23 @@
     }
 
     /* ── Bluetooth Widget (reuses .gps-card layout) ──────────────────── */
-    .bt-icon { background: rgba(59,130,246,0.12); color: var(--color-info); }
+    .bt-icon { background: var(--tint-info); color: var(--color-info); }
     .bt-status-dot { width:10px; height:10px; border-radius:50%; background: var(--color-text-muted); flex-shrink:0; }
     .bt-status-dot.active { background: var(--color-success); animation: pulse 2s ease infinite; }
     .bt-status-dot.error  { background: var(--color-danger); }
     .bt-connect-btn {
-      font-size: var(--text-xs);
-      font-weight: 600;
+      font-size: var(--text-sm);
+      font-weight: 700;
       color: var(--color-primary);
-      background: var(--color-primary-glow);
+      background: var(--tint-primary);
       border-radius: var(--radius-full);
-      padding: 6px 12px;
+      padding: 12px 18px;
       flex-shrink: 0;
+      line-height: 1.25;
+      text-align: center;
+      max-width: 130px;
     }
-    .bt-connect-btn:hover { background: rgba(79,70,229,0.3); }
+    .bt-connect-btn:hover { background: var(--tint-primary-strong); }
     .bt-connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Bluetooth Pair Wizard (modal-bt-pair) ───────────────────────── */
@@ -1869,7 +1895,7 @@
 
     .wlr-location-btn.selected {
       border-color: var(--color-primary);
-      background: var(--color-primary-glow);
+      background: var(--tint-primary);
       color: var(--color-primary);
     }
 
@@ -1940,17 +1966,17 @@
 
     .btn-install {
       padding: var(--sp-2) var(--sp-4);
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
+      background: #FFFFFF;
+      border: none;
       border-radius: var(--radius-full);
-      color: #fff;
+      color: var(--color-primary);
       font-size: var(--text-sm);
-      font-weight: 600;
+      font-weight: 700;
       white-space: nowrap;
       transition: background var(--transition-fast);
     }
 
-    .btn-install:hover { background: rgba(255,255,255,0.3); }
+    .btn-install:hover { background: #E8E7FC; }
 
     /* ================================================================
        FORGOT PASSWORD SCREEN
@@ -2565,7 +2591,7 @@
           <div class="gps-coords" id="bt-status-text">Not connected</div>
           <div class="gps-distance" id="bt-device-name">No device paired</div>
         </div>
-        <button class="bt-connect-btn" id="bt-connect-btn" onclick="BT.openPairModal()">Pair</button>
+        <button class="bt-connect-btn" id="bt-connect-btn" onclick="BT.openPairModal()">Bluetooth Attendance</button>
         <div class="bt-status-dot" id="bt-dot"></div>
       </div>
 
@@ -2577,7 +2603,7 @@
           <div class="install-text-sub">Add to home screen for offline access</div>
         </div>
         <button class="btn-install" id="btn-install-app" onclick="App.installPWA()">Install</button>
-        <button class="icon-btn" style="border:none; background:rgba(255,255,255,0.1); color:#fff;" onclick="document.getElementById('install-prompt').classList.remove('visible')">
+        <button class="icon-btn" style="border:none; background:#FFFFFF; color:var(--color-primary);" onclick="document.getElementById('install-prompt').classList.remove('visible')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
@@ -2621,7 +2647,7 @@
             <path d="M8 12a4 4 0 0 1 8 0"/>
             <path d="M12 12v6"/>
           </svg>
-          Mark Attendance
+          GPS Attendance
         </button>
 
         <button class="btn btn-ghost btn-full" id="btn-checkout" onclick="App.markCheckout()">
@@ -2746,7 +2772,8 @@
             </div>
             <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
           </div>
-          <!-- Face ID setup -->
+
+          <!-- Face Login setup -->
           <div class="settings-item" onclick="Auth.registerBiometric('face')">
             <div class="settings-item-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2848,7 +2875,7 @@
           </div>
 
           <div class="settings-item" onclick="App.clearLocalData()">
-            <div class="settings-item-icon" style="background:rgba(239,68,68,0.1);">
+            <div class="settings-item-icon" style="background:var(--tint-danger);">
               <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </div>
             <div class="settings-item-info">
@@ -2881,11 +2908,11 @@
         ">
           <div style="
             width:44px; height:44px; border-radius:var(--radius-md);
-            background:rgba(255,255,255,0.15);
+            background:#FFFFFF;
             display:flex; align-items:center; justify-content:center;
             flex-shrink:0;
           ">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
@@ -2895,15 +2922,15 @@
             <div style="font-family:var(--font-display); font-size:var(--text-sm); font-weight:700; color:#fff;">
               Install AttendX
             </div>
-            <div style="font-size:var(--text-xs); color:rgba(255,255,255,0.75); margin-top:2px;">
+            <div style="font-size:var(--text-xs); color:#EDECFE; margin-top:2px;">
               Add to home screen for offline access &amp; faster launch
             </div>
           </div>
           <button
             onclick="App.installPWA()"
             style="
-              background:rgba(255,255,255,0.2);
-              color:#fff;
+              background:#FFFFFF;
+              color:var(--color-primary);
               font-size:var(--text-xs);
               font-weight:700;
               padding:8px 14px;
@@ -2912,8 +2939,8 @@
               white-space:nowrap;
               transition:background var(--transition-fast);
             "
-            onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.2)'"
+            onmouseover="this.style.background='#E8E7FC'"
+            onmouseout="this.style.background='#FFFFFF'"
           >
             Install
           </button>
@@ -3770,6 +3797,38 @@
     let forgotStep = 'email'; // 'email' | 'otp' | 'newpass'
     let forgotEmail = '';
 
+    /* ── Biometric setup cooldown / expiry ─────────────────────────────
+     * Face Login and Fingerprint Login can each only be (re-)set up once
+     * every 30 days (prevents someone repeatedly swapping the enrolled
+     * biometric), and are treated as expired after 90 days so the person
+     * has to re-verify/re-enroll periodically. */
+    const BIO_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;  // 30 days
+    const BIO_EXPIRY_MS   = 90 * 24 * 60 * 60 * 1000;  // 90 days
+
+    function _bioSetupKey(type) { return `attendx_bio_${type}_setup_at`; }
+
+    /** @returns {{enrolled:boolean, expired:boolean, cooldownRemainingMs:number, setupAt:number|null}} */
+    function _bioStatus(type) {
+      const raw = localStorage.getItem(_bioSetupKey(type));
+      if (!raw) return { enrolled: false, expired: false, cooldownRemainingMs: 0, setupAt: null };
+      const setupAt = parseInt(raw, 10);
+      const age = Date.now() - setupAt;
+      return {
+        enrolled: true,
+        setupAt,
+        expired: age >= BIO_EXPIRY_MS,
+        cooldownRemainingMs: Math.max(0, BIO_COOLDOWN_MS - age),
+      };
+    }
+
+    function _markBioSetup(type) {
+      localStorage.setItem(_bioSetupKey(type), String(Date.now()));
+    }
+
+    function _daysFromMs(ms) {
+      return Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+    }
+
     /**
      * Initialise auth state from localStorage on app load.
      * If a remembered session exists, restore it silently.
@@ -3817,14 +3876,19 @@
       document.getElementById('bottom-nav').classList.add('visible');
       UI.showScreen('screen-home');
 
-      // Check if biometric credential is registered on this device
-    // Biometric button is always visible. Update its label based on registration state.
-    const hasFp   = localStorage.getItem('attendx_bio_registered_fingerprint') === 'true';
-      const hasFace = localStorage.getItem('attendx_bio_registered_face')        === 'true';
+      // Reflect enrollment state for both biometric methods in Profile
+      const fpStatus   = _bioStatus('fingerprint');
+      const faceStatus = _bioStatus('face');
       const fpSub   = document.getElementById('biometric-fp-sub');
       const faceSub = document.getElementById('biometric-face-sub');
-      if (fpSub)   fpSub.textContent   = hasFp   ? '✓ Fingerprint active on this device'  : 'Set up fingerprint authentication';
-      if (faceSub) faceSub.textContent = hasFace  ? '✓ Face ID active on this device'       : 'Set up Face ID authentication';
+      const bioLabel = (status, activeLabel) => {
+        if (!status.enrolled) return `Set up ${activeLabel}`;
+        if (status.expired)   return `⚠ Expired — tap to re-verify`;
+        const daysLeft = _daysFromMs(BIO_EXPIRY_MS - (Date.now() - status.setupAt));
+        return `✓ Active on this device · renews in ${daysLeft}d`;
+      };
+      if (fpSub)   fpSub.textContent   = bioLabel(fpStatus, 'fingerprint authentication');
+      if (faceSub) faceSub.textContent = bioLabel(faceStatus, 'Face ID authentication');
     }
 
     /**
@@ -3867,9 +3931,6 @@
 
         currentUser = user;
 
-        // Capture face image at login time (best-effort)
-        captureAndStoreFace('login').catch(() => {}); // Never block login
-
         // Persist session if "Remember me" is checked
         if (remember) {
           localStorage.setItem('attendx_session', JSON.stringify({ user }));
@@ -3882,6 +3943,14 @@
 
         applySession(user);
         Toast.show('Signed in successfully', 'success');
+
+        // Face Login now takes over image capture at sign-in: it opens the
+        // same live-camera flow used to set up Face Login (visible preview
+        // + explicit capture), instead of silently grabbing a frame in the
+        // background. First sign-in enrolls the face; every sign-in after
+        // that verifies it. Never blocks sign-in — runs after the home
+        // screen is already shown.
+        captureFaceAtLogin(user).catch(() => {});
 
       } catch (err) {
         Toast.show(err.message || 'Login failed. Check your credentials.', 'error');
@@ -3920,6 +3989,16 @@
       const user = currentUser || (await DB.getUser());
       if (!user) {
         Toast.show('Please sign in before setting up biometrics.', 'warning');
+        return;
+      }
+
+      // 30-day cooldown: block re-setup if it was already done recently
+      // and hasn't expired (90 days) yet.
+      const status = _bioStatus(type);
+      if (status.enrolled && !status.expired && status.cooldownRemainingMs > 0) {
+        const days  = _daysFromMs(status.cooldownRemainingMs);
+        const label = type === 'face' ? 'Face Login' : 'Fingerprint Login';
+        Toast.show(`${label} was already set up recently — you can redo it again in ${days} day${days === 1 ? '' : 's'}.`, 'info');
         return;
       }
 
@@ -4006,6 +4085,7 @@
         }
 
         // Update profile sub-label
+        _markBioSetup('fingerprint');
         const fpSub = document.getElementById('biometric-fp-sub');
         if (fpSub) fpSub.textContent = '✓ Fingerprint active on this device';
 
@@ -4031,16 +4111,23 @@
      * is what gets compared on every future login/attendance check.
      * @param {object} user - the currently signed-in user
      */
-    async function registerFaceBiometric(user) {
+    async function registerFaceBiometric(user, { silent = false } = {}) {
       try {
-        Toast.show('Loading face recognition engine…', 'info');
+        if (!silent) Toast.show('Loading face recognition engine…', 'info');
         const { descriptor, dataUrl } = await FaceAuth.enroll();
 
         // Store locally (fast + fully offline capable)
         localStorage.setItem('attendx_face_descriptor', JSON.stringify(descriptor));
         localStorage.setItem('attendx_bio_registered_face', 'true');
         localStorage.setItem('attendx_bio_email', (user.email || '').toLowerCase());
+        _markBioSetup('face');
         await DB.saveBiometric(user.email, { faceDescriptor: descriptor, faceThumb: dataUrl });
+
+        // Also drop this capture into the rolling face-verification queue,
+        // since sign-in is now the one place a face photo gets taken.
+        const sizeBytes = Math.ceil((dataUrl.length * 3) / 4);
+        await DB.saveFace({ timestamp: Date.now(), trigger: 'login_enroll', dataUrl, sizeBytes });
+        if (typeof App !== 'undefined' && App.renderFaceQueue) App.renderFaceQueue();
 
         const account = await DB.getRegisteredUser(user.email);
         if (account) await DB.saveRegisteredUser({ ...account, faceDescriptor: descriptor });
@@ -4056,12 +4143,10 @@
           }
         }
 
-        const faceSub = document.getElementById('biometric-face-sub');
-        if (faceSub) faceSub.textContent = '✓ Face ID active on this device';
         const card = document.getElementById('biometric-setup-card');
         if (card) card.classList.add('success');
 
-        Toast.show('Face login enabled!', 'success');
+        Toast.show('Face recognized and saved for login verification!', 'success');
       } catch (err) {
         Toast.show('Face setup failed: ' + (err.message || 'camera unavailable'), 'error');
       }
@@ -4098,6 +4183,12 @@
           return;
         }
         await registerBiometric('fingerprint');
+        return;
+      }
+
+      const fpStatus = _bioStatus('fingerprint');
+      if (fpStatus.expired) {
+        Toast.show('Fingerprint Login expired (90+ days). Sign in with your password and redo it from Profile.', 'info');
         return;
       }
 
@@ -4138,7 +4229,7 @@
         localStorage.setItem('attendx_session', JSON.stringify({ user }));
         applySession(user);
 
-        captureAndStoreFace('biometric_login').catch(() => {});
+        captureFaceAtLogin(user).catch(() => {});
         Toast.show('Fingerprint login successful', 'success');
 
       } catch (err) {
@@ -4160,6 +4251,18 @@
           return;
         }
         await registerBiometric('face');
+        return;
+      }
+
+      const faceStatus = _bioStatus('face');
+      if (faceStatus.expired) {
+        const user = getUser() || await DB.getUser();
+        if (!user) {
+          Toast.show('Face Login expired (90+ days). Sign in with your password to set it up again.', 'info');
+          return;
+        }
+        Toast.show('Your Face Login has expired (90+ days) — setting it up again…', 'info');
+        await registerFaceBiometric(user, { silent: true });
         return;
       }
 
@@ -4236,32 +4339,77 @@
     }
 
     /**
-     * Capture a face image from the front camera and store it in the
-     * rolling 3-photo queue. This is best-effort — if the camera is
-     * unavailable, it fails silently.
-     * @param {string} trigger - Why we're capturing (e.g., 'login', 'attendance')
+     * Face capture at sign-in — this is now the ONLY place Face Login
+     * lives (there is no separate "Face Login" setup screen anymore). It
+     * takes over the exact same live-camera flow used for Face Login
+     * enrollment/verification (visible preview + explicit capture via
+     * FaceCam), instead of silently grabbing a frame in the background.
+     *   • First sign-in for this device/account → enrolls the face.
+     *   • Every sign-in after that → verifies the live face against the
+     *     enrolled descriptor and stores the captured photo in the
+     *     rolling face-verification queue.
+     * Always best-effort — a denied camera or a non-matching face never
+     * blocks or reverses the sign-in that already happened via password.
+     * @param {object} user - the just-signed-in user
      */
-    async function captureAndStoreFace(trigger) {
-      // Check camera permission without prompting
-      const perm = await navigator.permissions?.query({ name: 'camera' }).catch(() => null);
-      if (perm?.state === 'denied') return; // Camera denied, skip silently
-
+    async function captureFaceAtLogin(user) {
       try {
-        const { dataUrl, sizeBytes } = await _grabFaceFrame();
+        const hasFaceEnrolled = localStorage.getItem('attendx_bio_registered_face') === 'true'
+          || !!localStorage.getItem('attendx_face_descriptor')
+          || !!user.faceDescriptor;
 
-        await DB.saveFace({
-          timestamp:  Date.now(),
-          trigger,
-          dataUrl,
-          sizeBytes,
-        });
+        if (!hasFaceEnrolled) {
+          // Nothing enrolled yet — take over the Face Login enrollment flow.
+          await registerFaceBiometric(user, { silent: true });
+          return;
+        }
 
+        // A descriptor is enrolled — but if it's 90+ days old, it's expired
+        // and must be redone automatically as part of sign-in.
+        const faceStatus = _bioStatus('face');
+        if (faceStatus.enrolled && faceStatus.expired) {
+          Toast.show('Your Face Login has expired (90+ days) — setting it up again…', 'info');
+          await registerFaceBiometric(user, { silent: true });
+          return;
+        }
+        if (!faceStatus.enrolled) {
+          // Descriptor exists (e.g. synced down from the Database on a new
+          // device) but has no local setup clock yet — start the clock now
+          // rather than forcing an unexpected re-enrollment mid-sign-in.
+          _markBioSetup('face');
+        }
+
+        // Already enrolled — verify the live face against it.
+        Toast.show('Loading face recognition engine…', 'info');
+        const storedRaw = localStorage.getItem('attendx_face_descriptor');
+        const stored = storedRaw
+          ? JSON.parse(storedRaw)
+          : (user.faceDescriptor ? JSON.parse(user.faceDescriptor) : null);
+
+        // First time this descriptor shows up on this device (e.g. synced
+        // down from the Database on a new device) — cache it locally so
+        // Bluetooth Attendance pairing's face check can find it too.
+        if (!storedRaw && stored) {
+          localStorage.setItem('attendx_face_descriptor', JSON.stringify(stored));
+          localStorage.setItem('attendx_bio_registered_face', 'true');
+        }
+
+        const { matched, distance, dataUrl } = await FaceAuth.verify(stored, 'Verify your face to sign in');
+
+        // Store the capture in the same rolling queue Mark Attendance uses.
+        const sizeBytes = Math.ceil((dataUrl.length * 3) / 4);
+        await DB.saveFace({ timestamp: Date.now(), trigger: 'login', dataUrl, sizeBytes });
         if (typeof App !== 'undefined' && App.renderFaceQueue) App.renderFaceQueue();
 
-        return dataUrl;
+        if (matched === false) {
+          Toast.show(`Face didn't match your enrolled face (distance ${distance.toFixed(2)}). You're still signed in with your password.`, 'warning');
+          return;
+        }
+
+        Toast.show('Face recognized and verified successfully', 'success');
       } catch (err) {
-        // Best-effort — never throw for silent/background captures
-        return null;
+        // Best-effort — camera denied/cancelled should never affect sign-in.
+        Toast.show('Face capture skipped: ' + (err.message || 'camera unavailable'), 'warning');
       }
     }
 
@@ -4269,8 +4417,9 @@
      * Capture a face image and store it in the rolling 3-photo queue,
      * THROWING if the camera is unavailable/denied/cancelled. Use this for
      * flows where the photo capture is a required step (e.g. submitting
-     * the Mark Attendance form), as opposed to captureAndStoreFace() which
-     * is silent/best-effort for background captures like login.
+     * the Mark Attendance form), as opposed to captureFaceAtLogin() which
+     * is best-effort and never blocks/reverses a sign-in that already
+     * happened via password.
      * @param {string} trigger
      * @returns {Promise<string>} dataUrl of the captured photo
      */
@@ -4443,7 +4592,7 @@
       }
     }
 
-    return { init, login, logout, biometricLogin, registerBiometric, changePassword, handleForgotStep, getUser, captureAndStoreFace, captureFaceRequired };
+    return { init, login, logout, biometricLogin, registerBiometric, changePassword, handleForgotStep, getUser, captureFaceAtLogin, captureFaceRequired, getBiometricStatus: _bioStatus };
   })();
 
 
@@ -5013,7 +5162,7 @@
       if (dot)      dot.className = 'bt-status-dot ' + (connected ? 'active' : '');
       if (statusEl) statusEl.textContent = connected ? 'Connected' : 'Not connected';
       if (nameEl)   nameEl.textContent   = connected ? (device?.name || 'Paired device') : 'No device paired';
-      if (btn)      { btn.textContent = connected ? 'Disconnect' : 'Pair'; btn.disabled = false; btn.onclick = connected ? disconnect : connect; }
+      if (btn)      { btn.textContent = connected ? 'Disconnect' : 'Bluetooth Attendance'; btn.disabled = false; btn.onclick = connected ? disconnect : connect; }
       if (toggleEl) toggleEl.classList.toggle('on', connected);
       const sub = document.getElementById('bt-toggle-sub');
       if (sub) sub.textContent = connected ? `Paired with ${device?.name || 'device'}` : 'Pair a beacon for proximity checks';
@@ -5182,7 +5331,13 @@
 
       const storedRaw = localStorage.getItem('attendx_face_descriptor');
       if (!storedRaw) {
-        Toast.show('Set up Face Login from your Profile first to enable this check.', 'info');
+        Toast.show('Face Login hasn\'t been set up on this device yet — sign out and sign back in with camera access allowed, then try pairing again.', 'info');
+        return;
+      }
+
+      const faceStatus = Auth.getBiometricStatus('face');
+      if (faceStatus.expired) {
+        Toast.show('Your Face Login has expired (90+ days) — sign out and back in to renew it before pairing.', 'info');
         return;
       }
 
