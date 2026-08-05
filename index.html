@@ -175,8 +175,6 @@
       flex: 1;
       overflow-y: auto;
       padding-top: var(--safe-top);
-      /* Reserve space so the fixed bottom nav never covers the last bit of content */
-      padding-bottom: calc(72px + var(--safe-bottom));
       /* Smooth scroll with momentum on iOS */
       -webkit-overflow-scrolling: touch;
     }
@@ -519,12 +517,10 @@
        ================================================================ */
     #bottom-nav {
       display: none;             /* Hidden on auth screens */
-      position: fixed;           /* Always pinned to the viewport bottom, independent of scroll */
+      position: sticky;
       bottom: 0;
       left: 0;
       right: 0;
-      max-width: 480px;          /* Match #app's phone-width cap */
-      margin: 0 auto;
       background: var(--color-surface);
       border-top: 1px solid var(--color-border);
       padding-bottom: var(--safe-bottom);
@@ -1351,16 +1347,13 @@
     .bt-status-dot.active { background: var(--color-success); animation: pulse 2s ease infinite; }
     .bt-status-dot.error  { background: var(--color-danger); }
     .bt-connect-btn {
-      font-size: var(--text-sm);
-      font-weight: 700;
+      font-size: var(--text-xs);
+      font-weight: 600;
       color: var(--color-primary);
       background: var(--color-primary-glow);
       border-radius: var(--radius-full);
-      padding: 12px 18px;
+      padding: 6px 12px;
       flex-shrink: 0;
-      line-height: 1.25;
-      text-align: center;
-      max-width: 130px;
     }
     .bt-connect-btn:hover { background: rgba(79,70,229,0.3); }
     .bt-connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -2572,7 +2565,7 @@
           <div class="gps-coords" id="bt-status-text">Not connected</div>
           <div class="gps-distance" id="bt-device-name">No device paired</div>
         </div>
-        <button class="bt-connect-btn" id="bt-connect-btn" onclick="BT.openPairModal()">Bluetooth Attendance</button>
+        <button class="bt-connect-btn" id="bt-connect-btn" onclick="BT.openPairModal()">Pair</button>
         <div class="bt-status-dot" id="bt-dot"></div>
       </div>
 
@@ -2628,7 +2621,7 @@
             <path d="M8 12a4 4 0 0 1 8 0"/>
             <path d="M12 12v6"/>
           </svg>
-          GPS Attendance
+          Mark Attendance
         </button>
 
         <button class="btn btn-ghost btn-full" id="btn-checkout" onclick="App.markCheckout()">
@@ -2750,6 +2743,22 @@
             <div class="settings-item-info">
               <div class="settings-item-label">Fingerprint Login</div>
               <div class="settings-item-sub" id="biometric-fp-sub">Set up fingerprint authentication</div>
+            </div>
+            <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+          </div>
+          <!-- Face ID setup -->
+          <div class="settings-item" onclick="Auth.registerBiometric('face')">
+            <div class="settings-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
+                <circle cx="9" cy="12" r="1" fill="currentColor"/>
+                <circle cx="15" cy="12" r="1" fill="currentColor"/>
+                <path d="M9 16s1 1.5 3 1.5 3-1.5 3-1.5"/>
+              </svg>
+            </div>
+            <div class="settings-item-info">
+              <div class="settings-item-label">Face Login</div>
+              <div class="settings-item-sub" id="biometric-face-sub">Set up Face ID authentication</div>
             </div>
             <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
           </div>
@@ -3808,12 +3817,14 @@
       document.getElementById('bottom-nav').classList.add('visible');
       UI.showScreen('screen-home');
 
-      // Check if a fingerprint credential is registered on this device
-      // (Face Login no longer has its own settings entry — it now runs
-      // automatically as part of sign-in, see captureFaceAtLogin().)
-      const hasFp = localStorage.getItem('attendx_bio_registered_fingerprint') === 'true';
-      const fpSub = document.getElementById('biometric-fp-sub');
-      if (fpSub) fpSub.textContent = hasFp ? '✓ Fingerprint active on this device' : 'Set up fingerprint authentication';
+      // Check if biometric credential is registered on this device
+    // Biometric button is always visible. Update its label based on registration state.
+    const hasFp   = localStorage.getItem('attendx_bio_registered_fingerprint') === 'true';
+      const hasFace = localStorage.getItem('attendx_bio_registered_face')        === 'true';
+      const fpSub   = document.getElementById('biometric-fp-sub');
+      const faceSub = document.getElementById('biometric-face-sub');
+      if (fpSub)   fpSub.textContent   = hasFp   ? '✓ Fingerprint active on this device'  : 'Set up fingerprint authentication';
+      if (faceSub) faceSub.textContent = hasFace  ? '✓ Face ID active on this device'       : 'Set up Face ID authentication';
     }
 
     /**
@@ -3856,6 +3867,9 @@
 
         currentUser = user;
 
+        // Capture face image at login time (best-effort)
+        captureAndStoreFace('login').catch(() => {}); // Never block login
+
         // Persist session if "Remember me" is checked
         if (remember) {
           localStorage.setItem('attendx_session', JSON.stringify({ user }));
@@ -3868,14 +3882,6 @@
 
         applySession(user);
         Toast.show('Signed in successfully', 'success');
-
-        // Face Login now takes over image capture at sign-in: it opens the
-        // same live-camera flow used to set up Face Login (visible preview
-        // + explicit capture), instead of silently grabbing a frame in the
-        // background. First sign-in enrolls the face; every sign-in after
-        // that verifies it. Never blocks sign-in — runs after the home
-        // screen is already shown.
-        captureFaceAtLogin(user).catch(() => {});
 
       } catch (err) {
         Toast.show(err.message || 'Login failed. Check your credentials.', 'error');
@@ -4025,9 +4031,9 @@
      * is what gets compared on every future login/attendance check.
      * @param {object} user - the currently signed-in user
      */
-    async function registerFaceBiometric(user, { silent = false } = {}) {
+    async function registerFaceBiometric(user) {
       try {
-        if (!silent) Toast.show('Loading face recognition engine…', 'info');
+        Toast.show('Loading face recognition engine…', 'info');
         const { descriptor, dataUrl } = await FaceAuth.enroll();
 
         // Store locally (fast + fully offline capable)
@@ -4035,12 +4041,6 @@
         localStorage.setItem('attendx_bio_registered_face', 'true');
         localStorage.setItem('attendx_bio_email', (user.email || '').toLowerCase());
         await DB.saveBiometric(user.email, { faceDescriptor: descriptor, faceThumb: dataUrl });
-
-        // Also drop this capture into the rolling face-verification queue,
-        // since sign-in is now the one place a face photo gets taken.
-        const sizeBytes = Math.ceil((dataUrl.length * 3) / 4);
-        await DB.saveFace({ timestamp: Date.now(), trigger: 'login_enroll', dataUrl, sizeBytes });
-        if (typeof App !== 'undefined' && App.renderFaceQueue) App.renderFaceQueue();
 
         const account = await DB.getRegisteredUser(user.email);
         if (account) await DB.saveRegisteredUser({ ...account, faceDescriptor: descriptor });
@@ -4056,10 +4056,12 @@
           }
         }
 
+        const faceSub = document.getElementById('biometric-face-sub');
+        if (faceSub) faceSub.textContent = '✓ Face ID active on this device';
         const card = document.getElementById('biometric-setup-card');
         if (card) card.classList.add('success');
 
-        Toast.show('Face recognized and saved for login verification!', 'success');
+        Toast.show('Face login enabled!', 'success');
       } catch (err) {
         Toast.show('Face setup failed: ' + (err.message || 'camera unavailable'), 'error');
       }
@@ -4136,7 +4138,7 @@
         localStorage.setItem('attendx_session', JSON.stringify({ user }));
         applySession(user);
 
-        captureFaceAtLogin(user).catch(() => {});
+        captureAndStoreFace('biometric_login').catch(() => {});
         Toast.show('Fingerprint login successful', 'success');
 
       } catch (err) {
@@ -4234,54 +4236,32 @@
     }
 
     /**
-     * Face capture at sign-in — this is now the ONLY place Face Login
-     * lives (there is no separate "Face Login" setup screen anymore). It
-     * takes over the exact same live-camera flow used for Face Login
-     * enrollment/verification (visible preview + explicit capture via
-     * FaceCam), instead of silently grabbing a frame in the background.
-     *   • First sign-in for this device/account → enrolls the face.
-     *   • Every sign-in after that → verifies the live face against the
-     *     enrolled descriptor and stores the captured photo in the
-     *     rolling face-verification queue.
-     * Always best-effort — a denied camera or a non-matching face never
-     * blocks or reverses the sign-in that already happened via password.
-     * @param {object} user - the just-signed-in user
+     * Capture a face image from the front camera and store it in the
+     * rolling 3-photo queue. This is best-effort — if the camera is
+     * unavailable, it fails silently.
+     * @param {string} trigger - Why we're capturing (e.g., 'login', 'attendance')
      */
-    async function captureFaceAtLogin(user) {
+    async function captureAndStoreFace(trigger) {
+      // Check camera permission without prompting
+      const perm = await navigator.permissions?.query({ name: 'camera' }).catch(() => null);
+      if (perm?.state === 'denied') return; // Camera denied, skip silently
+
       try {
-        const hasFaceEnrolled = localStorage.getItem('attendx_bio_registered_face') === 'true'
-          || !!localStorage.getItem('attendx_face_descriptor')
-          || !!user.faceDescriptor;
+        const { dataUrl, sizeBytes } = await _grabFaceFrame();
 
-        if (!hasFaceEnrolled) {
-          // Nothing enrolled yet — take over the Face Login enrollment flow.
-          await registerFaceBiometric(user, { silent: true });
-          return;
-        }
+        await DB.saveFace({
+          timestamp:  Date.now(),
+          trigger,
+          dataUrl,
+          sizeBytes,
+        });
 
-        // Already enrolled — verify the live face against it.
-        Toast.show('Loading face recognition engine…', 'info');
-        const storedRaw = localStorage.getItem('attendx_face_descriptor');
-        const stored = storedRaw
-          ? JSON.parse(storedRaw)
-          : (user.faceDescriptor ? JSON.parse(user.faceDescriptor) : null);
-
-        const { matched, distance, dataUrl } = await FaceAuth.verify(stored, 'Verify your face to sign in');
-
-        // Store the capture in the same rolling queue Mark Attendance uses.
-        const sizeBytes = Math.ceil((dataUrl.length * 3) / 4);
-        await DB.saveFace({ timestamp: Date.now(), trigger: 'login', dataUrl, sizeBytes });
         if (typeof App !== 'undefined' && App.renderFaceQueue) App.renderFaceQueue();
 
-        if (matched === false) {
-          Toast.show(`Face didn't match your enrolled face (distance ${distance.toFixed(2)}). You're still signed in with your password.`, 'warning');
-          return;
-        }
-
-        Toast.show('Face recognized and verified successfully', 'success');
+        return dataUrl;
       } catch (err) {
-        // Best-effort — camera denied/cancelled should never affect sign-in.
-        Toast.show('Face capture skipped: ' + (err.message || 'camera unavailable'), 'warning');
+        // Best-effort — never throw for silent/background captures
+        return null;
       }
     }
 
@@ -4289,9 +4269,8 @@
      * Capture a face image and store it in the rolling 3-photo queue,
      * THROWING if the camera is unavailable/denied/cancelled. Use this for
      * flows where the photo capture is a required step (e.g. submitting
-     * the Mark Attendance form), as opposed to captureFaceAtLogin() which
-     * is best-effort and never blocks/reverses a sign-in that already
-     * happened via password.
+     * the Mark Attendance form), as opposed to captureAndStoreFace() which
+     * is silent/best-effort for background captures like login.
      * @param {string} trigger
      * @returns {Promise<string>} dataUrl of the captured photo
      */
@@ -4464,7 +4443,7 @@
       }
     }
 
-    return { init, login, logout, biometricLogin, registerBiometric, changePassword, handleForgotStep, getUser, captureFaceAtLogin, captureFaceRequired };
+    return { init, login, logout, biometricLogin, registerBiometric, changePassword, handleForgotStep, getUser, captureAndStoreFace, captureFaceRequired };
   })();
 
 
@@ -5034,7 +5013,7 @@
       if (dot)      dot.className = 'bt-status-dot ' + (connected ? 'active' : '');
       if (statusEl) statusEl.textContent = connected ? 'Connected' : 'Not connected';
       if (nameEl)   nameEl.textContent   = connected ? (device?.name || 'Paired device') : 'No device paired';
-      if (btn)      { btn.textContent = connected ? 'Disconnect' : 'Bluetooth Attendance'; btn.disabled = false; btn.onclick = connected ? disconnect : connect; }
+      if (btn)      { btn.textContent = connected ? 'Disconnect' : 'Pair'; btn.disabled = false; btn.onclick = connected ? disconnect : connect; }
       if (toggleEl) toggleEl.classList.toggle('on', connected);
       const sub = document.getElementById('bt-toggle-sub');
       if (sub) sub.textContent = connected ? `Paired with ${device?.name || 'device'}` : 'Pair a beacon for proximity checks';
