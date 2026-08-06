@@ -7029,28 +7029,51 @@
      * stack and show the previous screen. If the stack is empty, we let
      * the browser do its default thing (exit / go to previous page).
      */
+    let _backPressedOnce = false;
+    let _backPressTimer  = null;
+
     window.addEventListener('popstate', (e) => {
-      // Pop the current entry first
       _navStack.pop();
 
-      // If there's still a screen to go back to, show it silently
-      // (don't push a new history entry — the browser already moved back)
       if (_navStack.length > 0) {
+        // Normal back — go to previous screen
+        _backPressedOnce = false;
+        clearTimeout(_backPressTimer);
+
         const prev = _navStack[_navStack.length - 1];
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const target = document.getElementById(prev);
         if (target) { target.classList.add('active'); target.scrollTop = 0; }
 
-        // Keep bottom-nav in sync
         const tabMap = { 'screen-home': 'home', 'screen-history': 'history', 'screen-profile': 'profile' };
         if (tabMap[prev]) {
           document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
           document.getElementById(`nav-${tabMap[prev]}`)?.classList.add('active');
         }
+
+      } else {
+        // Stack is empty — we're at the root (home/login)
+        if (_backPressedOnce) {
+          // Second press — actually close / exit
+          _backPressedOnce = false;
+          clearTimeout(_backPressTimer);
+          // On Android PWA this closes the app; on browser it goes back in browser history
+          window.close();
+        } else {
+          // First press — show toast and re-push so the next back triggers this again
+          _backPressedOnce = true;
+          Toast.show('Press back again to exit', 'info');
+          history.pushState({ screenId: _navStack[0] || 'screen-home' }, '', location.href);
+          _navStack.push(_navStack[0] || 'screen-home'); // restore stack entry
+
+          // Reset after 2.5 seconds if user doesn't press again
+          _backPressTimer = setTimeout(() => {
+            _backPressedOnce = false;
+          }, 2500);
+        }
       }
-      // If stack is now empty the browser navigates away normally (or closes app)
     });
-    
+        
     return {
       showScreen, navigate, togglePassword, updateStrengthMeter,
       animateRing, showFieldError, clearFieldError, setButtonLoading,
@@ -7131,7 +7154,7 @@
    */
   document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme preference before anything renders (prevents flash)
-    const savedTheme = localStorage.getItem('attendx_theme') || 'dark';
+    const savedTheme = localStorage.getItem('attendx_theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     const isDark = savedTheme === 'dark';
     const themeSw = document.getElementById('theme-toggle-switch');
