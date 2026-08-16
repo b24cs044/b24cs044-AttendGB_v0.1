@@ -1,0 +1,436 @@
+AttendX
+
+Student / Faculty User Manual
+
+Biometric & GPS-based Attendance — Check-In App
+
+Progressive Web App (PWA) · Version 1.0.0
+
+Contents
+
+1. Introduction
+
+2. Installing AttendX on Your Device
+
+3. Creating Your Account
+
+4. Signing In
+
+5. Setting Up Fingerprint / Face Login
+
+6. The Home Screen
+
+7. Marking Attendance (Check In)
+
+8. Checking Out
+
+9. Bluetooth Proximity Pairing (Optional)
+
+10. Requesting a Location Override (WLR)
+
+11. Attendance History & Export
+
+12. Notice Board
+
+13. Your Profile & Settings
+
+14. Notifications
+
+15. Working Offline
+
+16. Privacy: What Happens to Your Photo & Location
+
+17. Troubleshooting & FAQ
+
+1. Introduction
+
+AttendX is the app you use every day to check in and out of class.
+Instead of a paper register or a teacher calling out your name, you open
+the app, tap Mark Attendance, and it confirms three things at once:
+where you are (GPS), that it's really you (a quick face photo), and —
+optionally — that you're near a classroom Bluetooth device. This makes
+attendance faster for you and much harder to fake for anyone else.
+
+This manual is written for Students, but Faculty accounts use the same
+app and the same check-in flow — the difference is only in the account
+details you enter when you register.
+
+  -----------------------------------------------------------------------
+  Note: This student app is the companion to a separate Teacher/Admin
+  app. Institutions, classes, subjects, and notices are all set up by
+  your Teacher/Admin — you don't manage any of that here, you only view
+  and use it.
+
+  -----------------------------------------------------------------------
+
+2. Installing AttendX on Your Device
+
+Android / Desktop Chrome
+
++-----+----------------------------------------------------------------+
+| 1   | Open AttendX in Chrome                                         |
+|     |                                                                |
+|     | Visit the AttendX web address.                                 |
++-----+----------------------------------------------------------------+
+| 2   | Look for the install banner                                    |
+|     |                                                                |
+|     | AttendX shows an “Install App” banner automatically once it    |
+|     | detects your browser can install it.                           |
++-----+----------------------------------------------------------------+
+| 3   | Tap Install                                                    |
+|     |                                                                |
+|     | Confirm the prompt — AttendX now has its own icon like a       |
+|     | normal app.                                                    |
++-----+----------------------------------------------------------------+
+
+iPhone / iPad (Safari)
+
++-----+----------------------------------------------------------------+
+| 1   | Open AttendX in Safari                                         |
+|     |                                                                |
+|     | iOS doesn't support one-tap install, so AttendX shows manual   |
+|     | instructions instead.                                          |
++-----+----------------------------------------------------------------+
+| 2   | Tap the Share icon, then “Add to Home Screen”                  |
+|     |                                                                |
+|     | AttendX will then open full-screen from your home screen, just |
+|     | like Android.                                                  |
++-----+----------------------------------------------------------------+
+
+  -----------------------------------------------------------------------
+  Tip: You can also just use AttendX in the browser without installing —
+  installing simply makes it faster to open and gives it a proper
+  home-screen icon.
+
+  -----------------------------------------------------------------------
+
+3. Creating Your Account
+
+Registration is a short 3-step wizard:
+
++-----+----------------------------------------------------------------+
+| 1   | Personal Info                                                  |
+|     |                                                                |
+|     | Your name, email, mobile number, date of birth, and your       |
+|     | Student/Employee ID.                                           |
++-----+----------------------------------------------------------------+
+| 2   | Organisation                                                   |
+|     |                                                                |
+|     | Your institution, your role (Student or Faculty/Admin), and    |
+|     | department. Students also enter year/section; Faculty enter    |
+|     | their staff-specific field instead.                            |
++-----+----------------------------------------------------------------+
+| 3   | Security & Biometrics                                          |
+|     |                                                                |
+|     | Set a password (minimum 8 characters, entered twice to         |
+|     | confirm), and optionally set up Fingerprint and/or Face Login  |
+|     | right away.                                                    |
++-----+----------------------------------------------------------------+
+
+  -----------------------------------------------------------------------
+  Note: Your device is given a private Device ID the very first time you
+  open AttendX (before you even sign in), and every attendance record you
+  submit is tagged with it — this is one of the signals used to help
+  detect attendance being marked from someone else's device.
+
+  -----------------------------------------------------------------------
+
+4. Signing In
+
+-   Enter your email and password, then tap Sign In.
+
+-   Tick “Remember me” to stay signed in between visits on this device —
+    otherwise you're signed out when you close the app.
+
+-   Forgot your password? Tap Forgot Password and follow the 3 steps:
+    enter your email → enter the OTP code emailed to you → set a new
+    password.
+
+5. Setting Up Fingerprint / Face Login
+
+These are optional faster sign-in and anti-proxy methods, managed from
+your Profile screen at any time (Settings → Biometric Login):
+
+Fingerprint Login
+
+Uses your device's own fingerprint/screen-lock sensor (via a secure
+platform passkey) — AttendX never sees or stores your actual
+fingerprint. Once set up, you can sign in with a fingerprint tap instead
+of typing your password.
+
+Face Login
+
+AttendX opens your camera, detects your face, and creates a private
+mathematical “face signature” from it — not a photo lookup, a numeric
+pattern used only to check “is this the same face”. This same signature
+is then used automatically during Mark Attendance to make sure the
+person checking in is really you, not someone else using your phone.
+
+  -----------------------------------------------------------------------
+  Note: Both Fingerprint and Face Login can only be (re-)set up once
+  every 30 days, and expire automatically after 90 days, at which point
+  you'll be asked to re-verify. This is a deliberate anti-abuse measure
+  so a lost/stolen device can't have a new face or fingerprint silently
+  swapped in.
+
+  -----------------------------------------------------------------------
+
+6. The Home Screen
+
+Your Home screen is a dashboard showing:
+
+-   Attendance Ring — a large circular progress ring showing your
+    attendance percentage for the current month.
+
+-   GPS Widget — your current place name, coordinates, altitude, and a
+    link to open your position in Google Maps.
+
+-   Bluetooth Widget — shows whether you're currently paired with a
+    classroom Bluetooth device.
+
+-   Today's Status — whether you've checked in today, and at what time.
+
+-   Face Verification Queue — thumbnails of your last 3 attendance photo
+    captures, so you can see recent check-ins at a glance.
+
+-   Notice Board preview — the latest notice from your institution, with
+    an unread-count badge.
+
+-   Mark Attendance / Check Out buttons — the main actions.
+
+7. Marking Attendance (Check In)
+
+This is the core everyday action. Tap Mark Attendance from Home, then:
+
++-----+----------------------------------------------------------------+
+| 1   | Pick the subject/lecture                                       |
+|     |                                                                |
+|     | Choose from the list your institution has set up for your      |
+|     | department/year/section.                                       |
++-----+----------------------------------------------------------------+
+| 2   | Confirm the date                                               |
+|     |                                                                |
+|     | Defaults to today.                                             |
++-----+----------------------------------------------------------------+
+| 3   | Location check                                                 |
+|     |                                                                |
+|     | AttendX checks your GPS position. If your institution has set  |
+|     | a class location radius, you must be within that distance to   |
+|     | proceed.                                                       |
++-----+----------------------------------------------------------------+
+| 4   | Photo capture                                                  |
+|     |                                                                |
+|     | AttendX opens your camera and captures a live photo — required |
+|     | every time, not optional. If you've set up Face Login, this    |
+|     | photo is automatically matched against your enrolled face.     |
++-----+----------------------------------------------------------------+
+| 5   | Face match check                                               |
+|     |                                                                |
+|     | If the captured face doesn't match your enrolled Face Login    |
+|     | (or no face is detected), attendance is NOT marked and you're  |
+|     | asked to retry in better lighting.                             |
++-----+----------------------------------------------------------------+
+| 6   | Confirmation                                                   |
+|     |                                                                |
+|     | Once everything checks out, your attendance is saved and       |
+|     | you'll see a “Present” badge with your check-in time on Home.  |
++-----+----------------------------------------------------------------+
+
+  -----------------------------------------------------------------------
+  Note: The GPS position, the captured photo, and the face-match result
+  are all stored as part of your attendance record — this is what makes
+  the record trustworthy to your institution, not just a live-only check.
+
+  -----------------------------------------------------------------------
+
+8. Checking Out
+
+Once you've checked in, a Check Out button appears on Home. Tapping it
+records your checkout time, which then shows alongside your check-in
+time in Attendance History — useful for institutions that track total
+time present, not just a single tap.
+
+9. Bluetooth Proximity Pairing (Optional)
+
+If your classroom uses a Bluetooth attendance beacon or your faculty's
+phone as a proximity check, you can pair with it from the Bluetooth
+widget on Home or from Settings:
+
+1.  Tap the Bluetooth widget/toggle.
+
+2.  Your device's Bluetooth device picker opens — select the classroom
+    device.
+
+3.  Once paired, the widget shows “Connected” with the device name.
+
+  -----------------------------------------------------------------------
+  Note: Bluetooth pairing is entirely optional and additive — if
+  Bluetooth isn't supported on your device/browser, or you choose not to
+  pair, you can still mark attendance normally with GPS + face
+  verification.
+
+  -----------------------------------------------------------------------
+
+10. Requesting a Location Override (WLR)
+
+If you genuinely cannot be physically present (e.g. you're at home sick,
+in your hostel, or in hospital) but need attendance considered, use a
+Work Location Request:
+
+4.  Open the Location Override Request form.
+
+5.  Select your alternative location — Home, Hostel, or Hospital.
+
+6.  Write a short reason.
+
+7.  Confirm the date and tap Submit Request.
+
+  -----------------------------------------------------------------------
+  Note: A WLR does not mark you present automatically — it goes to your
+  institution's admin for approval. Submitting one is not a substitute
+  for checking in when you are able to.
+
+  -----------------------------------------------------------------------
+
+11. Attendance History & Export
+
+Open History to see every past check-in, each paired automatically with
+its matching check-out (if any). Each entry shows the date, subject,
+check-in/check-out time, place name (with a map link), and a status
+badge (Present / Absent / Partial / Queued).
+
+-   Filter by date using the date picker at the top.
+
+-   Tap Export CSV to download your filtered history as a spreadsheet
+    file — useful for your own records or if your institution asks for a
+    copy.
+
+12. Notice Board
+
+A read-only feed of announcements posted by your institution's
+Teacher/Admin — you cannot post here yourself. Notices you haven't seen
+yet are marked and counted with a small badge on Home. Tap into the
+Notice Board to see the full list, including any dates and attachments.
+
+13. Your Profile & Settings
+
+Open Profile to manage:
+
+-   Your name, ID, institution, role, and department badges (read-only
+    display of your registered info).
+
+-   Biometric Login — set up, view status, or renew Fingerprint/Face
+    Login (see Section 5).
+
+-   Change Password.
+
+-   Theme — switch between Light and Dark mode.
+
+-   Notifications — enable/disable push alerts (see Section 14).
+
+-   Auto Sync — choose whether queued attendance syncs automatically
+    when you're back online, or only when you manually tap Sync Now.
+
+-   Install App — shown here too if you haven't installed AttendX yet.
+
+-   Clear Cache — clears saved sign-in preferences only; your attendance
+    records are never deleted by this.
+
+14. Notifications
+
+Turn on notifications from Profile → Notifications to receive alerts
+pushed by your institution — for example, when a live attendance window
+opens for your class. AttendX will ask your browser/device for
+notification permission the first time you enable this.
+
+15. Working Offline
+
+AttendX is built to keep working with patchy or no signal:
+
+-   The app itself keeps loading offline once you've opened it at least
+    once.
+
+-   If you mark attendance with no signal, it's saved on your device
+    immediately and queued — you'll see a small queue banner.
+
+-   As soon as your connection returns, the queued record is
+    automatically sent to the server in the background — even if you've
+    closed the app in the meantime — unless you've set Auto Sync to
+    “Never”, in which case you tap Sync Now yourself.
+
+-   A live session banner and the Notice Board only refresh with new
+    information while you're online; offline, you'll see the last data
+    AttendX saw.
+
+16. Privacy: What Happens to Your Photo & Location
+
+It's natural to wonder what happens to the photo and GPS data AttendX
+collects. Here's a plain-language summary:
+
+-   Face matching itself happens on your own device — your live photo is
+    compared against your enrolled face signature locally, using
+    on-device processing, not by sending images out for a person to look
+    at.
+
+-   The photo captured at check-in is stored as part of your attendance
+    record (locally, and synced to your institution's backend) so your
+    institution has evidence for that attendance entry.
+
+-   Your face "signature" (a set of numbers describing your face, not a
+    picture) may also be synced to your institution's backend so Face
+    Login and attendance checks work consistently even if you switch
+    devices.
+
+-   Your GPS coordinates, place name, and accuracy are recorded with
+    each attendance entry so your institution can confirm you were
+    within the expected area.
+
+  -----------------------------------------------------------------------
+  Note: If you're uncomfortable with any of this, speak to your
+  institution's admin — camera and location permissions are requested by
+  your browser/OS each time and can be denied, though AttendX will not be
+  able to mark attendance without them since GPS + photo are required
+  parts of the record.
+
+  -----------------------------------------------------------------------
+
+17. Troubleshooting & FAQ
+
+“Camera access is required to mark attendance”
+
+Your browser blocked camera permission. Check your browser/device
+settings and allow AttendX to use the camera, then try again.
+
+“Face does not match your enrolled Face Login”
+
+Try again in good, even lighting, facing the camera directly. If this
+keeps happening, your Face Login enrollment may be stale — go to Profile
+and re-verify it (subject to the 30-day cooldown described in Section
+5).
+
+“You are Xm from class. Must be within Ym.”
+
+Your institution has set a geofence radius around the classroom, and
+your GPS position is currently outside it. Move closer, wait a moment
+for GPS to refine, or contact your faculty if you believe the radius is
+misconfigured.
+
+My attendance shows “Queued” instead of “Present”
+
+This means it was marked while offline (or the sync attempt failed) and
+is waiting to sync. It will update automatically once you're back
+online, unless Auto Sync is set to “Never” — in that case, tap Sync Now
+from Profile.
+
+Bluetooth won't pair
+
+Some browsers (notably iOS Safari) don't support Web Bluetooth at all —
+the widget will show “Not supported.” Bluetooth is optional either way;
+you can still check in with GPS + face verification.
+
+I didn't get my password reset OTP
+
+Check your spam folder, and make sure you entered the same email your
+account is registered with. OTPs can take a minute or two to arrive.
+
+— End of User Manual —

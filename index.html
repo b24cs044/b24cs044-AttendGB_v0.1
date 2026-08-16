@@ -3199,6 +3199,75 @@
        ================================================================ -->
   <script>
   /*
+   * ════════════════════════════════════════════════════════════════════
+   * AttendX (Student App) — Architecture Overview
+   * ------------------------------------------------------------------
+   * This is the STUDENT/FACULTY-facing counterpart to the separate
+   * Teacher/Admin AttendX app. It lets an individual check in/out of
+   * class with a live GPS position + a live face-verification photo
+   * (and, optionally, a Bluetooth proximity pairing as an extra signal),
+   * and browse a read-only Notice Board. It does not manage rosters,
+   * institutions, or classes — that setup happens in the Teacher/Admin
+   * app and is simply *read* here (subjects, notices, live sessions).
+   *
+   * MODULE MAP (in source order — search "MODULE:" to jump between them)
+   *   DB            IndexedDB wrapper — all local persistence.
+   *   GAS           fetch() wrapper for the shared Google Apps Script
+   *                 backend (same backend/Sheet the Teacher/Admin app
+   *                 talks to).
+   *   CryptoUtil    SHA-256 password hashing for the local/offline
+   *                 account registry (used only when no GAS backend is
+   *                 configured).
+   *   FaceCam       Low-level camera UI (opens <video>, captures a
+   *                 still frame to <canvas>).
+   *   FaceAuth      Turns a camera frame into a 128-number face
+   *                 descriptor (face-api.js/TensorFlow.js) and compares
+   *                 two descriptors — the real anti-proxy mechanism
+   *                 behind Face Login and the Mark Attendance face check.
+   *   Auth          Login/registration/session + WebAuthn fingerprint
+   *                 login + Face Login, with cooldown/expiry rules.
+   *   Register      3-step sign-up wizard (personal info → org →
+   *                 security/biometrics).
+   *   GPS           Continuous location tracking + geofence distance
+   *                 check + reverse-geocoding for a human place name.
+   *   BT            Optional Web Bluetooth proximity pairing (additive
+   *                 signal only — never blocks attendance by itself).
+   *   Notices       Read-only Notice Board, synced from the shared
+   *                 backend (posting happens only in the Teacher/Admin
+   *                 app).
+   *   SubjectCatalog Subject/course dropdown for Mark Attendance,
+   *                 sourced from what the Teacher/Admin app defined.
+   *   App           The main screen controller: init/boot sequence,
+   *                 Mark Attendance / Check-out flow (the core action —
+   *                 see submitMarkAttendance), Work Location Requests
+   *                 (WLR), install prompt, notification toggle, sync.
+   *   History       Attendance history list + CSV export.
+   *   UI            Generic DOM helpers: screen/modal switching, a
+   *                 lightweight in-app back-stack that mirrors native
+   *                 back-button behaviour, field-error helpers.
+   *   Toast         Global bottom-of-screen notification snackbar.
+   *   Validate      Shared input validation helpers (email, phone, …).
+   *
+   * DATA FLOW / OFFLINE MODEL
+   *   Every attendance punch is written to IndexedDB FIRST (via DB),
+   *   then pushed to the GAS backend if online; if offline, it is
+   *   queued (STORE_QUEUE) and the Service Worker's Background Sync
+   *   (see sw.js) flushes the queue automatically once connectivity
+   *   returns — even if this page/tab is closed. There is no local
+   *   fallback for GPS/face capture: both are required to mark
+   *   attendance, online or offline, because they are recorded into
+   *   the attendance record itself, not just used for a live check.
+   *
+   * IMPORTANT: This file's IndexedDB schema (store names/keys) is
+   * intentionally mirrored — but re-implemented, not shared — in
+   * sw.js, because a Service Worker cannot import from the page.
+   * Any change to the DB module's store names/shapes here must be
+   * copied over to sw.js's own lightweight IDB helpers, or background
+   * sync will silently stop finding the queue.
+   * ════════════════════════════════════════════════════════════════════
+   */
+
+  /*
    * ====================================================================
    * MODULE: DB — IndexedDB wrapper
    * All persistence (attendance queue, user profile, face images) goes

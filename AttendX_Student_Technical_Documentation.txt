@@ -1,0 +1,728 @@
+AttendX
+
+Student App — Technical Documentation
+
+Architecture, Data Model, and Implementation Notes
+
+Version 1.0.0 · WebAuthn + face-api.js + IndexedDB PWA
+
+Contents
+
+1. System Overview
+
+2. Technology Stack
+
+3. File / Project Structure
+
+4. PWA Configuration (manifest.json)
+
+5. Service Worker (sw.js) — Caching, Background Sync & Push
+
+6. Application Architecture (index.html)
+
+7. Client-Side Data Model (IndexedDB)
+
+8. Face Recognition Pipeline (face-api.js)
+
+9. GPS & Geofencing
+
+10. Bluetooth Proximity Verification
+
+11. Backend Integration (Google Apps Script API)
+
+12. Authentication & Session Management
+
+13. The Mark-Attendance Flow (End-to-End)
+
+14. Offline & Background Sync Model
+
+15. Push Notifications
+
+16. Module Reference
+
+17. Known Limitations & Security Notes
+
+18. Deployment Notes
+
+1. System Overview
+
+AttendX (Student App) is the student/faculty-facing counterpart to a
+separate Teacher/Admin AttendX application, sharing the same Google Apps
+Script (GAS) backend and Google Sheet. Where the Teacher/Admin app
+manages institutions, rosters, and marks attendance on a class's behalf,
+this app is used by an individual to check themselves in and out,
+verified by three independent signals: GPS location (with optional
+geofencing), a live face-verification photo (on-device biometric
+matching), and an optional Bluetooth proximity pairing.
+
+It is a single-file Progressive Web App: index.html contains the markup,
+CSS, and application script; sw.js is a separate Service Worker file
+providing offline caching, Background Sync, Periodic Background Sync,
+and Web Push handling; manifest.json declares PWA install metadata
+including app shortcuts and screenshots.
+
+  -----------------------------------------------------------------------
+  Note: The codebase is unusually thoroughly self-documented already:
+  every module in index.html is introduced with a "MODULE: Name —
+  purpose" banner comment, and sw.js opens with an explicit changelog of
+  fixes applied versus an earlier version. This document summarises and
+  organises that documentation rather than duplicating it line-by-line.
+
+  -----------------------------------------------------------------------
+
+2. Technology Stack
+
+  -----------------------------------------------------------------------
+  Layer               Technology
+  ------------------- ---------------------------------------------------
+  Markup / styling    Plain HTML5 + hand-written CSS (custom properties
+                      as design tokens, no CSS framework)
+
+  Application logic   Vanilla ES6 JavaScript, modules as IIFEs returning
+                      a public API object (no bundler, no TypeScript, no
+                      framework)
+
+  Fonts               Google Fonts — Space Grotesk (display) + Inter
+                      (body)
+
+  Local persistence   IndexedDB (structured, versioned schema) — no
+                      reliance on localStorage for bulk data, though
+                      small flags/preferences still use localStorage
+
+  Offline support     Service Worker (Cache API) + Background Sync +
+                      Periodic Background Sync
+
+  Push notifications  Web Push API via the Service Worker's 'push' event
+
+  Face recognition    face-api.js 0.22.2 (TensorFlow.js under the hood) —
+                      tiny face detector, 68-point landmarks, face
+                      recognition net
+
+  Location            Geolocation API
+                      (navigator.geolocation.watchPosition) +
+                      OpenStreetMap Nominatim for reverse geocoding
+
+  Proximity           Web Bluetooth API (navigator.bluetooth) — optional,
+                      feature-detected
+
+  Auth (optional 2nd  WebAuthn (platform passkey / fingerprint) alongside
+  factor)             on-device Face Login
+
+  Cloud backend       Google Apps Script Web App (doPost) reading/writing
+                      a shared Google Sheet — same backend as the
+                      Teacher/Admin app
+
+  Deployment target   Cloudflare Pages (per the file's header comment),
+                      or any static host
+  -----------------------------------------------------------------------
+
+3. File / Project Structure
+
+index.html Entire application: <head> (meta/manifest/fonts), <style>
+(design tokens + all CSS), HTML for every screen/modal,
+and 3 inline <script> blocks:
+1. Service Worker registration
+2. window.ATTEND_X_CONFIG (GAS backend URL)
+3. The full application script (all modules)
+Also loads face-api.js from a CDN via a deferred <script>.
+sw.js Service Worker: offline caching, Background Sync,
+Periodic Background Sync, Web Push, notification click
+routing. Maintains its own lightweight IndexedDB helpers
+(mirrors, but does not import, the DB module in index.html).
+manifest.json Web App Manifest — install metadata, shortcuts, and an
+install-screenshot for richer install UI on supporting
+platforms.
+
+4. PWA Configuration (manifest.json)
+
+  -------------------------------------------------------------------------
+  Field               Value                Effect
+  ------------------- -------------------- --------------------------------
+  name / short_name   AttendX — Smart      Full and short app names.
+                      Attendance / AttendX 
+
+  description         Biometric and        Shown in install UI / app stores
+                      GPS-based attendance that surface PWAs.
+                      tracking…            
+
+  start_url / scope   /                    Root-scoped app; opens at the
+                                           domain root when launched.
+
+  display             standalone           Runs without browser chrome.
+
+  orientation         portrait-primary     Locked portrait, matching the
+                                           mobile-first UI.
+
+  background_color /  #0A1628 / #4F46E5    Splash background (deep navy)
+  theme_color                              and OS accent (indigo), matching
+                                           the app's dark theme and primary
+                                           colour.
+
+  lang                en-IN                Declares Indian English as the
+                                           document language.
+
+  icons               192 & 512, purpose:  Single icon set serving both
+                      any maskable         regular and Android
+                                           adaptive-icon (maskable)
+                                           contexts.
+
+  screenshots         1 narrow-form-factor Enables a richer install prompt
+                      screenshot           UI on platforms that support the
+                                           Web App Install screenshots
+                                           feature.
+
+  categories          education,           App-store/PWA-directory
+                      productivity,        categorisation hints.
+                      utilities            
+
+  shortcuts           "Mark Attendance" →  Long-press the installed app
+                      /?action=mark        icon to jump straight to
+                                           check-in; index.html should read
+                                           the ?action=mark query param on
+                                           load to support this
+                                           (verify/implement if not already
+                                           wired up).
+  -------------------------------------------------------------------------
+
+  -----------------------------------------------------------------------
+  Implementation check: The manifest's shortcuts entry targets
+  /?action=mark. Confirm the app's boot sequence (App.init in index.html)
+  actually inspects location.search for action=mark and opens the Mark
+  Attendance modal automatically — this wiring lives in the consuming
+  page, not the manifest itself.
+
+  -----------------------------------------------------------------------
+
+5. Service Worker (sw.js) — Caching, Background Sync & Push
+
+sw.js is deliberately more capable than a minimal offline-shell worker;
+per its own header comment it fixes several gaps versus an earlier
+version (added cache versioning/busting, a real fetch handler,
+IndexedDB-backed background sync independent of the page being open,
+push support, and per-record error isolation during sync).
+
+Caching strategy by request type
+
+  --------------------------------------------------------------------------
+  Request type          Strategy            Notes
+  --------------------- ------------------- --------------------------------
+  GAS API calls         Network-only        Never cached — attendance/API
+  (script.google.com)                       responses are always live;
+                                            offline calls return a synthetic
+                                            {success:false, error} JSON
+                                            response with HTTP 503 rather
+                                            than throwing.
+
+  Google Fonts          Network-first,      Cached into CACHE_DYNAMIC for
+                        cache fallback      offline reuse.
+
+  Everything else (app  Cache-first,        Cached into CACHE_APP_SHELL; a
+  shell)                network fallback    full offline HTML fallback page
+                                            is served if a request has no
+                                            cached entry and the network is
+                                            unreachable.
+  --------------------------------------------------------------------------
+
+Cache versioning
+
+CACHE_VERSION ('v2' currently) is embedded in both CACHE_APP_SHELL and
+CACHE_DYNAMIC cache names. On activate, any cache whose name starts with
+'attendx-' but doesn't match the current version's names is deleted —
+bump CACHE_VERSION on any deploy that changes a cached asset.
+
+Background Sync
+
+The page registers a 'attendance-sync' tag (via
+ServiceWorkerRegistration.sync.register) whenever a record is queued
+offline. The browser fires the Service Worker's 'sync' event once
+connectivity returns — even if the app's tab/window is closed — which
+runs syncAttendanceQueue(): reads STORE_QUEUE from IndexedDB directly
+(via the SW's own lightweight IDB helpers), POSTs each record to the GAS
+backend one at a time, moves successes into STORE_RECORDS and deletes
+them from the queue, and — critically — catches and logs per-record
+failures without aborting the rest of the batch.
+
+  -----------------------------------------------------------------------
+  Note: The Service Worker cannot read localStorage. To learn the
+  configured GAS URL it first asks an open page via
+  postMessage/MessageChannel (GET_GAS_URL); if no page is open it falls
+  back to a metadata record mirrored into IndexedDB's user_profile store
+  by the page. If neither source has a URL, sync is skipped in "demo
+  mode" and clients are notified with {count:0, demo:true}.
+
+  -----------------------------------------------------------------------
+
+Periodic Background Sync & live polling
+
+If the browser supports the Periodic Background Sync API, the worker
+listens for a 'session-check' tag (intended to fire roughly every ~15
+minutes, at the browser's discretion) and simply notifies open clients
+to re-check live session status — the actual GAS call happens on the
+page side (App.checkLiveSession). The page additionally polls for live
+sessions every 2 minutes while open, independent of this mechanism.
+
+Push notifications
+
+On a 'push' event, the worker parses the payload as JSON (falling back
+to plain text) and calls self.registration.showNotification() with a
+title/body/icon/badge/vibration pattern. 'notificationclick' focuses an
+already-open AttendX window if one exists, or opens a new one at the URL
+embedded in the notification's data payload.
+
+6. Application Architecture (index.html)
+
+All application logic lives in one inline <script>, organised as a
+series of IIFE ('Immediately Invoked Function Expression') modules —
+const ModuleName = (() => { …; return { publicMethod, … }; })(); — each
+returning only the methods it wants to expose, with internal state and
+helpers kept private via closure. Modules call each other directly by
+name (e.g. App calling GPS.getPlaceName(), DB.addRecord(),
+Auth.getUser()) since everything shares one global scope.
+
+Screens are plain <div class="screen"> elements toggled via a .active
+class, switched through UI.showScreen()/UI.navigate(), which also
+maintains a manual navigation stack synced to the History API so the
+device back button/gesture steps back through screens like a native app.
+
+7. Client-Side Data Model (IndexedDB)
+
+The DB module owns a single IndexedDB database ('attendx', currently
+schema version 3) with these object stores:
+
+  --------------------------------------------------------------------------------
+  Store                Key               Purpose
+  -------------------- ----------------- -----------------------------------------
+  attendance_queue     localId           Offline attendance punches awaiting sync
+                       (autoincrement)   to the backend.
+
+  attendance_records   id                Successfully synced (or
+                                         locally-confirmed) attendance records,
+                                         indexed by date.
+
+  user_profile         key ('current')   The currently signed-in user's profile;
+                                         also used to mirror config (e.g. the GAS
+                                         URL) for the Service Worker to read.
+
+  registered_users     email             Local offline-capable account registry,
+                       (lowercased)      populated only via Sign Up — used for
+                                         login when no GAS backend is configured.
+
+  face_captures        auto              Rolling store of recent attendance-photo
+                                         captures (the Home screen's 3-photo
+                                         verification queue reads from here).
+
+  biometrics           per-email         Device-local copy of each account's
+                                         fingerprint credential ID and/or face
+                                         descriptor.
+  --------------------------------------------------------------------------------
+
+  -----------------------------------------------------------------------
+  Cross-file coupling: sw.js re-implements minimal versions of the store
+  names/shape (openIDB, getAllFromStore, putIntoStore, deleteFromStore)
+  rather than importing this module, because a Service Worker cannot
+  import page-scope code. Any schema change here (store names, keyPaths)
+  must be mirrored manually in sw.js or background sync will silently
+  stop finding data.
+
+  -----------------------------------------------------------------------
+
+8. Face Recognition Pipeline (face-api.js)
+
+FaceCam handles the low-level camera UI (opening a <video> stream,
+drawing a captured frame to <canvas>). FaceAuth builds on it using
+face-api.js, loading three TensorFlow.js models on first use (tiny face
+detector, 68-point face landmarks, and a face-recognition network) from
+a CDN, and exposes:
+
+-   enroll() — captures a face and returns a 128-number descriptor (a
+    real biometric embedding, not a stored photo comparison) plus a
+    thumbnail, used when setting up Face Login.
+
+-   verify(storedDescriptor) — captures a live face and computes the
+    Euclidean distance to a previously stored descriptor; matched =
+    distance ≤ MATCH_THRESHOLD (0.5 by default — lower is stricter).
+
+-   descriptorFromElement() — computes a descriptor from an
+    already-captured frame (reused so Mark Attendance doesn't have to
+    open the camera twice — once for the attendance photo and again for
+    face verification).
+
+During live camera preview, detection runs in a cheaper 'light' mode
+(smaller input size, presence-only, no landmarks/descriptor) purely to
+show the user "a face is detected" feedback; the full landmark +
+descriptor extraction only runs once, on the final captured frame, for
+performance.
+
+9. GPS & Geofencing
+
+GPS uses navigator.geolocation.watchPosition() (continuous tracking, not
+a one-shot request) with enableHighAccuracy:true, a 10s maximumAge, and
+a 15s timeout, started once on app boot and left running so the Home
+widget and Mark Attendance always have a fresh-enough fix.
+
+-   Geofencing: if a CLASS_LOCATION (lat/lng/radius) is available —
+    populated from backend/tenant configuration, never hard-coded — the
+    current position's distance from it is computed and compared to the
+    radius; Mark Attendance blocks with an explicit distance-based error
+    message if outside the radius. With no geofence configured, GPS
+    coordinates are still recorded on every attendance entry, but
+    proximity is not enforced.
+
+-   Reverse geocoding: place names are resolved via the free
+    OpenStreetMap Nominatim API, results cached in-memory per session
+    keyed to a ~111m grid (3-decimal-place lat/lng rounding) to avoid
+    excessive API calls on every position update.
+
+10. Bluetooth Proximity Verification
+
+BT wraps the Web Bluetooth API to pair with a nearby classroom device (a
+dedicated beacon, or a faculty phone acting as a GATT server) as an
+additional, optional signal. It is feature-detected ('bluetooth' in
+navigator) and never blocks the attendance flow if unsupported or
+declined — the connection state (connected + device name) is simply
+included in the attendance record as bluetoothVerified /
+bluetoothDevice.
+
+A separate 'Pair Wizard' flow (multi-step: scan → confirm roll/name →
+face check → send to host device) exists for a more guided
+pairing/verification handshake against a host device's custom GATT
+service, identified by two fixed UUIDs (ATTEND_SERVICE_UUID /
+ATTEND_CHAR_UUID) that must match whatever the paired host
+implementation (e.g. a companion Android APK) advertises.
+
+11. Backend Integration (Google Apps Script API)
+
+The GAS module centralises all server communication through a single
+post(payload) helper that POSTs {action, ...data} as text/plain
+(avoiding a CORS preflight) to the configured GAS_URL (read from
+window.ATTEND_X_CONFIG.gasUrl, set in the second inline <script>),
+explicitly follows the 302 redirect GAS issues on POST, and unwraps the
+standard {success, data, error} response envelope — throwing on !success
+so callers can use plain try/catch.
+
+  -----------------------------------------------------------------------------
+  Method                                Purpose
+  ------------------------------------- ---------------------------------------
+  registerUser(userData)                Create a new account server-side.
+
+  loginUser(email, password)            Authenticate and receive a user
+                                        profile.
+
+  markAttendance(attendanceData)        Submit a check-in or check-out punch.
+
+  getAttendanceHistory(userId,          Fetch a user's full attendance history.
+  tenantId)                             
+
+  submitWLR(wlrData)                    Submit a Work Location Request for
+                                        admin approval.
+
+  sendPasswordResetOTP(email) /         Forgot-password flow.
+  resetPassword(email, otp,             
+  newPassword)                          
+
+  getLiveSession(userId, tenantId)      Check whether an attendance window is
+                                        currently open for the user's class.
+
+  getNotices()                          Fetch the (read-only) notice board.
+
+  getSubjects()                         Fetch the subject/course catalogue
+                                        defined by the Teacher/Admin app.
+
+  registerBiometricCredential({email,   Persist a WebAuthn credential ID
+  credentialId, deviceGUID})            server-side for cross-device
+                                        fingerprint login.
+
+  registerFaceDescriptor({email,        Persist a face descriptor server-side
+  descriptor, deviceGUID})              for cross-device Face Login.
+
+  verifyFaceDescriptor({email,          Server-side re-check of a live
+  descriptor})                          descriptor against the stored one —
+                                        defense-in-depth alongside the
+                                        on-device check.
+
+  biometricLogin({email, type,          Sign in using a fingerprint credential
+  credentialId, descriptor})            or face descriptor instead of a
+                                        password.
+  -----------------------------------------------------------------------------
+
+  -----------------------------------------------------------------------
+  Offline-first design: isConfigured() (!!GAS_URL) gates almost every
+  network-dependent code path in the app — when no URL is set, AttendX
+  runs in a fully local/offline demo mode: registration and login work
+  against the local IndexedDB account registry (CryptoUtil-hashed
+  passwords), and attendance is recorded locally only, never synced.
+
+  -----------------------------------------------------------------------
+
+12. Authentication & Session Management
+
+Password handling
+
+When a GAS backend is configured, password verification happens
+server-side (loginUser/registerUser) — this app never needs to know how
+the server stores them. When no backend is configured, the local
+fallback (CryptoUtil, SHA-256 via the Web Crypto API) hashes passwords
+before writing them to the registered_users IndexedDB store — a real
+cryptographic hash, unlike a bitwise toy hash, though still
+unsalted-per-user beyond whatever CryptoUtil implements; treat this
+local-only path as a demo/offline convenience rather than
+production-grade auth.
+
+Sessions
+
+-   "Remember me" checked → session written to localStorage (persists
+    across restarts).
+
+-   Unchecked → session written to sessionStorage (cleared when the tab
+    closes).
+
+-   Auth.init() restores either on boot; when no GAS backend is
+    configured, it additionally re-validates the session's user against
+    the local registered_users store so a since-deleted local account
+    can't silently stay "logged in".
+
+Biometric second factors
+
+Two independent, optional methods, each with its own 30-day setup
+cooldown and 90-day expiry (tracked via localStorage timestamps, see
+Auth._bioStatus/_markBioSetup):
+
+1.  WebAuthn platform passkey (fingerprint/device unlock) — standard
+    navigator.credentials.create()/get() flow.
+
+2.  Face Login (see Section 8) — an app-implemented biometric using
+    face-api.js descriptors rather than the WebAuthn API.
+
+Both can additionally be checked server-side
+(registerBiometricCredential/registerFaceDescriptor +
+biometricLogin/verifyFaceDescriptor) so they aren't purely bound to one
+device.
+
+13. The Mark-Attendance Flow (End-to-End)
+
+submitMarkAttendance() (in the App module) is the single most important
+function in the codebase — it's the whole product's core promise.
+Sequence:
+
+3.  Validate the GPS fix against any configured geofence; block with a
+    distance error if outside range.
+
+4.  Reverse-geocode the position to a place name (best-effort; failure
+    doesn't block the flow).
+
+5.  Read current Bluetooth pairing status (best-effort additive signal,
+    never blocking).
+
+6.  Require a live camera capture (Auth.captureFaceRequired) —
+    camera-permission failure blocks the flow entirely.
+
+7.  If Face Login is enrolled, the captured face must match it — a
+    mismatch or "no face detected" blocks the flow with a specific
+    error.
+
+8.  If online and a backend is configured, re-verify the same descriptor
+    against the server-stored copy (defense-in-depth against a tampered
+    local descriptor); a server-side mismatch also blocks the flow.
+
+9.  Assemble the full attendance record (identity, org fields,
+    timestamps, subject/lecture time, the captured photo + face-match
+    result, GPS fields, Bluetooth fields, device GUID,
+    status:'present').
+
+10. Write the record to IndexedDB immediately (local-first).
+
+11. If online and configured, POST it to GAS synchronously and mark
+    synced:true on success; on failure (or if offline/unconfigured), add
+    it to the offline queue and register a 'attendance-sync' Background
+    Sync tag.
+
+12. Update the UI (badges, today's status, face-verification queue) and
+    show a toast reflecting whether the record synced immediately or was
+    queued.
+
+  -----------------------------------------------------------------------
+  Note: Every gate in this sequence (geofence, camera permission, face
+  match, server-side face re-check) is a hard stop — there is no code
+  path that marks attendance while skipping GPS or the photo capture, by
+  design.
+
+  -----------------------------------------------------------------------
+
+14. Offline & Background Sync Model
+
+-   Local-first writes: every attendance record is committed to
+    IndexedDB before any network attempt, so a submission is never lost
+    due to a dropped connection.
+
+-   Online submit path: if online and configured, the app itself
+    attempts the POST synchronously and only falls back to the offline
+    queue if that POST throws.
+
+-   Offline/queued path: the record is added to the attendance_queue
+    store and a Background Sync tag is registered so the Service Worker
+    can flush it later without the page needing to be open.
+
+-   Auto Sync preference: a user-facing localStorage flag ('always' vs
+    'never') read by App.setAutoSync/_applyAutoSyncUI — note this
+    preference currently governs the app's own manual "Sync Now" UI
+    state; the browser-level Background Sync registration itself fires
+    independently of this preference, since it's a browser API contract
+    rather than an app-level poll.
+
+-   Cross-tab/cross-worker messaging: the Service Worker notifies all
+    open tabs on SYNC_COMPLETE (with a synced-count payload) and on
+    BG_SESSION_CHECK (prompting a live-session re-check) via
+    postMessage, handled in App.onServiceWorkerMessage.
+
+15. Push Notifications
+
+Enabling notifications (App.toggleNotifications) requests the standard
+Notification permission from the browser. Actual push delivery requires
+the backend to hold a Push subscription for the device (subscribing via
+the Push API/PushManager is not shown in the excerpted flow here and
+should be verified/implemented alongside VAPID key configuration if not
+already present) and to send Web Push messages that sw.js's 'push'
+listener then renders as a notification, and 'notificationclick' routes
+to the relevant screen via the notification's embedded url.
+
+16. Module Reference
+
+  -----------------------------------------------------------------------
+  Module            Responsibility
+  ----------------- -----------------------------------------------------
+  DB                IndexedDB wrapper — all local persistence goes
+                    through this module.
+
+  GAS               fetch() wrapper for the shared Google Apps Script
+                    backend.
+
+  CryptoUtil        SHA-256 password hashing for the local/offline
+                    account registry.
+
+  FaceCam           Low-level camera UI: open stream, capture a still
+                    frame.
+
+  FaceAuth          face-api.js integration: descriptor extraction,
+                    comparison, enroll/verify.
+
+  Auth              Login/registration/session, WebAuthn + Face Login
+                    setup and cooldown/expiry.
+
+  Register          3-step sign-up wizard with per-step validation.
+
+  GPS               Continuous location tracking, geofence distance
+                    check, reverse geocoding.
+
+  BT                Optional Web Bluetooth proximity pairing + guided
+                    Pair Wizard.
+
+  Notices           Read-only Notice Board, cached + refreshed from the
+                    backend.
+
+  SubjectCatalog    Subject/course dropdown sourced from the
+                    Teacher/Admin app's data.
+
+  App               Screen/boot controller; Mark Attendance & Check-out
+                    flow; WLR; install prompt; notifications; sync
+                    orchestration.
+
+  History           Attendance history rendering (check-in/check-out
+                    pairing) + CSV export.
+
+  UI                Screen/modal switching with a back-stack mirroring
+                    browser history; field-error and password-strength
+                    helpers.
+
+  Toast             Global bottom-of-screen notification snackbar.
+
+  Validate          Shared input validation helpers (email, phone, etc.).
+  -----------------------------------------------------------------------
+
+17. Known Limitations & Security Notes
+
+Biometric & face-matching caveats
+
+-   Face matching threshold (0.5 Euclidean distance) is a tunable
+    trade-off between false rejects and false accepts — should be
+    validated against your institution's expected lighting/camera
+    conditions before relying on it as the sole anti-proxy control.
+
+-   On-device face descriptor comparison means the comparison logic and
+    threshold are visible/inspectable in client-side code; the
+    server-side verifyFaceDescriptor re-check is the actual line of
+    defense against a modified client, so ensure the GAS backend
+    genuinely re-runs its own comparison rather than trusting the
+    client's verdict.
+
+-   Local biometric credential storage (the 'biometrics' IndexedDB
+    store) keeps a device-local copy of credential IDs/descriptors;
+    treat device loss/theft as a credential-exposure event within the
+    90-day expiry window.
+
+Location integrity
+
+-   GPS coordinates reported by navigator.geolocation are ultimately
+    supplied by the OS/browser and are spoofable via developer tools,
+    rooted/jailbroken devices, or third-party location-mocking apps;
+    geofencing raises the bar but is not a hard cryptographic guarantee
+    of physical presence.
+
+-   Reverse geocoding depends on the free, rate-limited Nominatim public
+    API — high user volume may need a paid/self-hosted geocoding
+    provider or more aggressive caching than the current 3-decimal-place
+    session cache.
+
+Sync & data integrity
+
+-   No conflict resolution: if the same record is somehow synced twice
+    (e.g. a race between an online-path POST and Background Sync both
+    firing), duplicate handling depends entirely on the GAS backend's
+    own idempotency logic, not on anything in this client.
+
+-   The Service Worker's IndexedDB access is a hand-maintained duplicate
+    of the page's schema; schema drift between the two files is a real
+    risk (see Section 7 note).
+
+Configuration
+
+-   The GAS backend URL is embedded directly in client-side source
+    (window.ATTEND_X_CONFIG.gasUrl) — anyone reading page source can see
+    and call it directly; ensure the Apps Script endpoint performs its
+    own authorization/validation rather than trusting client-asserted
+    fields.
+
+-   Push notifications require additional plumbing (subscription
+    registration + VAPID keys) not fully covered by the excerpted client
+    flow — verify this is completed end-to-end before relying on push in
+    production.
+
+18. Deployment Notes
+
+13. Host index.html, manifest.json, sw.js, and an icons/ directory
+    (icon-192.png, icon-512.png, favicon files, and the screenshot
+    referenced in manifest.json) at the domain root — sw.js registers
+    with scope '/' and the manifest's scope is '/', so sub-path hosting
+    will break both.
+
+14. Serve over HTTPS — required for Service Worker registration,
+    WebAuthn, Geolocation, camera access, and Web Bluetooth, all of
+    which this app depends on.
+
+15. Set window.ATTEND_X_CONFIG.gasUrl in the second inline <script> of
+    index.html to your deployed Google Apps Script Web App URL (Deploy →
+    New deployment → Web app, Execute as: Me, Who has access: Anyone).
+    Leave it empty to ship in local/offline-only demo mode.
+
+16. Deploy the same GAS backend (and Google Sheet) used by the companion
+    Teacher/Admin app, since both apps share subjects, notices, and
+    attendance records.
+
+17. Bump CACHE_VERSION in sw.js on every release that changes a cached
+    static asset.
+
+18. If enabling Web Push, provision VAPID keys and implement the
+    PushManager subscription flow (subscribing the browser and sending
+    the subscription to the GAS backend) — this is a prerequisite the
+    push-handling code in sw.js assumes is already in place.
+
+— End of Technical Documentation —
