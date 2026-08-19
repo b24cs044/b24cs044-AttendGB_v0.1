@@ -1,66 +1,53 @@
-# AttendX - Teacher/Admin App
+# AttendX - Student/Faculty App
 
-AttendX is a classroom attendance app built as an installable PWA. Teachers use it to mark attendance for their classes and check records. Admins additionally set up institutions, branches, classes, and shared reference data.
+AttendX is the check-in app students and faculty use every day. Instead of a paper register or a roll call, you open the app, tap Mark Attendance, and it confirms three things at once where possible: where you are (GPS), that it's really you (a live face photo checked on-device), and optionally that you're near a classroom Bluetooth device.
 
-The app is local-first - data is written to the browser's localStorage first, so it's usable offline, and syncs to a Google Apps Script backend when a connection is available.
-
-This is the companion app to the Student/Faculty check-in app, which shares the same backend and Google Sheet but is a separate codebase.
+This app is the companion to the Teacher/Admin app - institutions, classes, subjects, and notices are all set up there. This app is only used to check in and view your own attendance.
 
 ## What it does
 
-- Mark attendance per class/section
-- Manage the student roster, including CSV import
-- View attendance records, per-student percentages, and subject-wise reports
-- Send parent alerts over SMS, email, or Telegram for students who are at risk or recently absent
-- Post and read institution-wide notices
-- Manage institutions, branches, classes, and master data (admin only)
-- Back up and restore data manually as a JSON file
-- Sign in with WebAuthn or a PIN as a faster alternative to typing a password
-- Keep working with no connection, syncing changes once back online
+- Check in with GPS, a live face match, and optional Bluetooth proximity pairing
+- Set up Fingerprint (WebAuthn) or Face Login for faster sign-in and anti-proxy protection, with a 30-day cooldown between re-setups and a 90-day expiry
+- Check out separately, so total time present is tracked, not just a single tap
+- View attendance history with check-in/check-out pairing and CSV export
+- Submit a Work Location Request (WLR) if you genuinely can't be physically present - this goes to your admin for approval, it doesn't mark you present automatically
+- Read notices posted by your institution
+- Get push notifications, for example when a live attendance window opens
+- Keep working offline - a check-in made with no signal is queued and sent automatically once you're back online
 
 ## Stack
 
-Plain HTML5 and hand-written CSS, no framework. The application logic is vanilla ES6 JavaScript with no bundler and no TypeScript. Data is kept in localStorage under an `ax2_` namespace rather than IndexedDB. Offline support comes from a service worker using the Cache API plus a web app manifest. Optional second-factor auth uses WebAuthn with a local PIN-hash fallback. The backend is a Google Apps Script web app (`doGet`/`doPost`) reading and writing a Google Sheet.
+Plain HTML5 and hand-written CSS using design-token custom properties, no framework. JavaScript is vanilla ES6 with modules written as IIFEs, no bundler or TypeScript. Local persistence is IndexedDB with a structured, versioned schema; localStorage is only used for small flags. Offline support relies on a service worker with background sync and periodic background sync. Push notifications go through the Web Push API. Face recognition uses face-api.js 0.22.2 (TensorFlow.js underneath) with a tiny face detector, 68-point landmarks, and a recognition net. Location uses the Geolocation API plus OpenStreetMap Nominatim for reverse geocoding. Bluetooth proximity goes through the Web Bluetooth API and is feature-detected, so it degrades gracefully where unsupported. Auth adds WebAuthn alongside on-device Face Login. The backend is the same Google Apps Script web app and Google Sheet used by the Teacher/Admin app. It's built to deploy on Cloudflare Pages or any static host.
 
 ## Project layout
 
 ```
-index.html          entire app: markup, CSS, and inline JS
-manifest.json        PWA install metadata
-service-worker.js    offline caching logic
-icons/                app icons referenced by manifest.json
+index.html    markup, CSS, and three inline scripts: service worker registration, GAS config, and the app itself
+sw.js         service worker: caching, background sync, push, notification click routing
+manifest.json PWA install metadata, shortcuts, and install screenshots
 ```
 
-There's no build step - everything ships in one HTML file. Internally it's organized into module objects like `DB`, `State`, `API`, `Auth`, `App`, `Students`, `Records`, `Analytics`, and `Notices`.
+Modules include `DB`, `GAS`, `CryptoUtil`, `FaceCam`, `FaceAuth`, `Auth`, `Register`, `GPS`, `BT`, `Notices`, `App`, `History`, `UI`, `Toast`, and `Validate`.
 
-## Roles
+## On privacy
 
-| Capability | Admin | Teacher |
-|---|---|---|
-| Mark attendance, view records/analytics, send alerts | yes | yes |
-| Add, edit, delete students | yes | yes |
-| Delete attendance records | yes | no |
-| Access Manage (institutions/branches/classes/master data) | yes | no |
-| Post, edit, delete notices | yes | read-only |
-
-## Free plan limits
-
-One active institution, one active branch, and up to three classes per active institution/branch pair. These are structural caps only - there's no limit on how many students or records can be stored.
+Face matching happens on-device - your live photo is compared locally against your enrolled face signature rather than sent off for someone to look at. The photo taken at check-in and the numeric face signature (not the raw image) are stored with your attendance record and synced to your institution's backend, along with your GPS coordinates, place name, and accuracy for that entry. Camera and location permissions are required; attendance can't be marked without them.
 
 ## Setting it up
 
-1. Host `index.html`, `manifest.json`, `service-worker.js`, and `icons/` at the domain root. The service worker registers with scope `/`, so hosting from a sub-path will break it.
-2. Serve everything over HTTPS - required for service worker registration and WebAuthn.
-3. Deploy the companion Google Apps Script project as a web app (execute as Me, access Anyone), then set the `GAS_URL` constant near the top of the inline script in `index.html` to match its deployment URL.
-4. Add the icons referenced in `manifest.json` (`icons/icon-192x192.png`, `icons/icon-512x512.png`, `icons/maskable-icon.png`) plus a favicon.
-5. Bump `CACHE_NAME` in `service-worker.js` on every release that changes a cached asset, otherwise returning users can get stuck on a stale cache.
+1. Host `index.html`, `manifest.json`, `sw.js`, and `icons/` (including the screenshot referenced in the manifest) at the domain root - the service worker registers with scope `/`, so sub-path hosting will break both the manifest scope and offline caching.
+2. Serve everything over HTTPS - required for service worker registration, WebAuthn, geolocation, camera access, and Web Bluetooth, all of which this app depends on.
+3. Set `window.ATTEND_X_CONFIG.gasUrl` in the second inline script of `index.html` to your deployed Google Apps Script web app URL. Leave it blank to run in local/offline-only demo mode.
+4. Deploy the same Apps Script backend and Google Sheet used by the Teacher/Admin app, since both apps share subjects, notices, and attendance records.
+5. Bump `CACHE_VERSION` in `sw.js` on every release that changes a cached asset.
+6. If you want push notifications working, provision VAPID keys and implement the PushManager subscription flow - the push-handling code in `sw.js` assumes this is already in place, but it isn't wired up out of the box.
 
 ## Things worth knowing before you rely on this in production
 
-- Passwords are stored in plain text in localStorage. That's fine for a single trusted device, but not something to expose to the open internet without adding server-side auth with hashed credentials.
-- Role checks are enforced in the UI only - the Apps Script backend, as called by this client, doesn't appear to do its own authorization checks. Harden that layer if sensitive data is involved.
-- The Apps Script URL is embedded directly in the client-side source, so anyone reading the page can call it directly.
-- There's no conflict resolution between local and cloud writes - last write wins, with no merge or version tracking.
-- localStorage has a practical size limit, usually 5-10MB per origin. A very large, long-running dataset could eventually hit that ceiling with no warning beyond a silent failure.
-- The CSV importers split rows on a naive comma, so any field with an embedded comma will misalign columns.
-- There's a "Bluetooth Attendance" entry point in the markup that's currently commented out and not active - it's a planned feature, not a bug.
+- The face-match threshold is a tunable trade-off between false rejects and false accepts. Validate it against your institution's typical lighting and camera conditions before treating it as your sole anti-proxy control, and make sure the backend actually re-runs its own comparison rather than trusting the client's verdict.
+- GPS coordinates can be spoofed through dev tools, rooted/jailbroken devices, or location-mocking apps. Geofencing raises the bar but isn't a hard guarantee of physical presence.
+- Reverse geocoding depends on the free, rate-limited Nominatim API - high volume may need a paid provider or more caching than the current setup.
+- There's no conflict resolution if the same record somehow syncs twice - duplicate handling depends entirely on the backend's own idempotency logic.
+- The service worker keeps its own hand-maintained copy of the IndexedDB schema, separate from the main page's copy, so the two can drift out of sync if one is updated without the other.
+- The Apps Script URL is embedded directly in client-side source, so anyone reading the page can see and call it.
+- Bluetooth pairing is optional and some browsers, notably iOS Safari, don't support Web Bluetooth at all - you can still check in with GPS and face verification either way.
